@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>K-CALC PRESTIGE</title>
+    <style>
+        /* --- BASE --- */
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            background-color: #050505;
+            background-image: radial-gradient(#1a1a1a 1px, transparent 1px);
+            background-size: 30px 30px;
+            color: #d1d5db;
+            font-family: 'Share Tech Mono', monospace;
+            height: 100vh; width: 100vw; margin: 0;
+            display: flex; justify-content: center; align-items: center; 
+            overflow: hidden; 
+        }
+
+        /* --- INTRO SCREEN --- */
+        #intro-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: #050505;
+            z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer;
+            transition: opacity 0.6s ease-out;
+        }
+        .intro-title {
+            color: #10b981; font-size: 1.8rem; font-weight: bold; text-transform: uppercase;
+            text-shadow: 0 0 15px rgba(16, 185, 129, 0.6); margin-bottom: 20px; text-align: center; padding: 0 20px;
+        }
+        .intro-sub {
+            color: #d1d5db; font-size: 1.2rem; letter-spacing: 2px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; text-shadow: 0 0 10px white; } 100% { opacity: 0.5; } }
+
+        /* ========================================= */
+        /* === LE CADRE (SEULE DIFFÉRENCE PC/MOBILE) === */
+        /* ========================================= */
+        
+        /* VERSION PC (Par défaut) : Aspect téléphone flottant */
+        .phone-frame {
+            aspect-ratio: 9 / 16; height: 95vh; max-width: 95vw;
+            background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+            border: 3px solid #10b981; /* Cadre Vert */
+            border-radius: 16px;
+            box-shadow: 0 0 60px rgba(0,0,0,0.9);
+            display: flex; flex-direction: column; padding: 10px; position: relative; overflow: hidden;
+        }
+
+        /* VERSION MOBILE : Plein écran */
+        @media (max-width: 768px) {
+            .phone-frame {
+                width: 100vw; height: 100vh;
+                max-width: none; aspect-ratio: unset;
+                border: 2px solid #10b981; 
+                border-radius: 0;
+                box-shadow: none;
+                padding: 4px;
+            }
+        }
+
+        /* ========================================= */
+        /* === DESIGN UNIFIÉ (PC & MOBILE IDENTIQUES) === */
+        /* ========================================= */
+
+        /* --- HEADER --- */
+        .app-header { 
+            text-align: center; margin-bottom: 5px; flex-shrink: 0;
+            border-bottom: 1px solid #333; padding-bottom: 5px;
+        }
+        .title-main { 
+            color: #10b981; font-size: 1.1rem; font-weight: bold; 
+            text-shadow: 0 0 8px rgba(16, 185, 129, 0.4); letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .title-sub { 
+            color: #9ca3af; font-size: 0.75rem; margin-top: 2px; 
+            letter-spacing: 2px; font-style: italic;
+        }
+
+        /* --- VISUALISATION --- */
+        .screen-bezel {
+            flex: 0 0 auto; /* Taille auto selon contenu (32% visé via pivot) */
+            min-height: 30%; /* Sécurité */
+            background: #020408;
+            border: 1px solid #333; border-radius: 6px;
+            box-shadow: inset 0 0 30px #000;
+            position: relative; margin-bottom: 8px;
+            overflow: hidden; display: flex; justify-content: center; align-items: flex-end;
+        }
+
+        .grid-bg {
+            position: absolute; width:100%; height:100%;
+            background-image: linear-gradient(rgba(16, 185, 129, 0.03) 1px, transparent 1px), 
+                              linear-gradient(90deg, rgba(16, 185, 129, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* --- GRUE & PIVOT TOUR EIFFEL --- */
+        .pivot-container { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; }
+        
+        .pivot-container svg {
+            height: 70px; /* Taille unifiée */
+            width: auto;
+            filter: drop-shadow(0 4px 6px black);
+            fill: #4b5563;
+        }
+
+        .anchor { 
+            position: absolute; 
+            bottom: 68px; /* Ajusté à la taille de la tour */
+            left: 50%; z-index: 10;
+            transform-origin: bottom center;
+            transform: translateX(-50%);
+        }
+
+        @keyframes sway {
+            0% { transform: translateX(-50%) rotate(0deg); }
+            25% { transform: translateX(-50%) rotate(-2deg); }
+            50% { transform: translateX(-50%) rotate(2deg); }
+            75% { transform: translateX(-50%) rotate(-1deg); }
+            100% { transform: translateX(-50%) rotate(0deg); }
+        }
+        .wobble-active { animation: sway 1s ease-out; }
+
+        .beam { height: 8px; position: absolute; top: -4px; display: flex; align-items: center; background: rgba(255,255,255,0.1); }
+        .b-rear { right: 0; background: #10b981; border-radius: 2px 0 0 2px; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+        .b-front { left: 0; background: #ef4444; border-radius: 0 2px 2px 0; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+        .rear-block {
+            position: absolute; left: 0; bottom: 0; width: 20px; height: 25px;
+            background-color: #10b981; box-shadow: 0 0 10px #10b981; border-radius: 2px;
+            transform: translateX(-50%); z-index: 12;
+        }
+        .load-point {
+            position: absolute; right: 0; bottom: -8px;
+            width: 8px; height: 8px; background: #ef4444;
+            border-radius: 50%; box-shadow: 0 0 6px #ef4444;
+            z-index: 15; transform: translateX(50%);
+        }
+
+        /* --- CONTRÔLES --- */
+        .control-deck { 
+            flex: 1; 
+            display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; 
+            padding-top: 2px; padding-bottom: 25px; /* Coussin de sécurité global */
+            overflow-y: auto; overflow-x: hidden;
+        }
+
+        .module {
+            background: #18181b; border: 1px solid #2d2d30; border-radius: 8px; padding: 6px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5); 
+            display: flex; flex-direction: column; justify-content: center; gap: 5px; width: 100%;
+        }
+        
+        .mod-header { 
+            font-size: 0.8rem; color: #6b7280; text-transform: uppercase; letter-spacing: 2px; 
+            text-align: center; margin-bottom: 2px; font-weight: bold; flex-shrink: 0;
+        }
+
+        /* --- LAYOUT COLONNES EMPILÉES (GLOBAL) --- */
+        .split-row { 
+            display: flex; flex-direction: column; /* TOUJOURS EMPILÉ */
+            gap: 5px; width: 100%; 
+        }
+        .half-col { width: 100%; display: flex; flex-direction: column; justify-content: flex-start; }
+        
+        /* Inversion ordre : Avant au-dessus Arrière (GLOBAL) */
+        .half-col:nth-child(2) { order: -1; }
+
+        /* --- LAYOUT LIGNE (Label + Input) (GLOBAL) --- */
+        .led-row {
+            display: flex; align-items: center; width: 100%; margin-bottom: 2px;
+        }
+        .led-row input { width: 50%; margin: 0; }
+        .led-row .led-label { width: 50%; margin: 0; font-size: 0.8rem; line-height: 1.1; }
+
+        .front-layout { flex-direction: row; }
+        .front-layout .led-label { text-align: right; padding-right: 10px; }
+
+        .rear-layout .led-label { order: 2; text-align: left; padding-left: 10px; }
+        .rear-layout input { order: 1; }
+
+        .main-red-row { display: flex; gap: 5px; width: 100%; align-items: stretch; margin-bottom: 5px; }
+        .left-monolith-col { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .right-stack-col { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+
+        /* --- SLIDERS FINS & ERGONOMIQUES (GLOBAL) --- */
+        .slider-box { 
+            height: 12px; margin-bottom: 4px;
+            border: none; background: #222; border-radius: 4px;
+            position: relative; width: 100%; display: flex; align-items: center; padding: 0 5px;
+        }
+        #slDistR { direction: rtl; }
+
+        input[type=range] {
+            -webkit-appearance: none; width: 100%; height: 100%; 
+            background: transparent; border-radius: 3px; cursor: pointer; 
+            z-index: 50; touch-action: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 20px; width: 12px;
+            background: #ccc; border-radius: 2px; margin-top: 0px;
+            box-shadow: 0 1px 3px black; border: 1px solid #fff;
+        }
+
+        .chk-overlay {
+            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+            display: flex; align-items: center; gap: 5px;
+            background: rgba(0,0,0,0.6); padding: 2px 4px; border-radius: 4px;
+            z-index: 5;
+        }
+        input[type="checkbox"] { accent-color: #ef4444; width: 16px; height: 16px; cursor: pointer; }
+        .chk-label { font-size: 0.6rem; color: #ccc; }
+
+        /* --- TYPOGRAPHIE & COULEURS --- */
+        .led-input {
+            background: #000; border: 1px solid #333; color: #10b981;
+            font-family: 'Share Tech Mono', monospace; text-align: center;
+            width: 100%; outline: none; border-radius: 4px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+            transition: border-color 0.2s, box-shadow 0.2s;
+            padding: 0;
+        }
+        .led-input:focus { border-color: #555; box-shadow: inset 0 2px 4px rgba(0,0,0,1), 0 0 5px rgba(255,255,255,0.1); }
+        
+        #outTotal { border: 2px solid #ef4444; }
+
+        /* Module Rouge "Shnop-Diet" Global */
+        .module-red .led-label { font-size: 0.75rem; } 
+        .module-red .monolith-led { 
+            font-size: 2.5rem; /* Gros mais pas trop */
+            line-height: 1; padding: 5px 0; 
+        } 
+        .module-red .standard-led, .module-red .big-led { font-size: 1.1rem; height: 35px; }
+
+        /* Autres modules */
+        .standard-led { font-size: 1.4rem; height: 35px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+        .monolith-led { font-size: 2.5rem; font-weight: bold; flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; text-shadow: 0 0 10px rgba(0,0,0,0.8); }
+
+        .detail-stack-row { display: flex; flex-direction: column; gap: 8px; margin-top: 5px; border-top: 1px solid #333; padding-top: 5px; }
+        .detail-group { display: flex; flex-direction: column; }
+
+        .big-led { font-size: 1.4rem; height: 35px; font-weight: bold; } 
+        .led-label { font-size: 0.9rem; color: #9ca3af; text-align: center; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .text-orange { color: #f59e0b; text-shadow: 0 0 5px rgba(245, 158, 11, 0.3); }
+        .text-green { color: #10b981; text-shadow: 0 0 5px rgba(16, 185, 129, 0.3); }
+        .text-red { color: #ef4444; text-shadow: 0 0 5px rgba(239, 68, 68, 0.3); }
+        .text-blue { color: #3b82f6; }
+
+    </style>
+</head>
+<body>
+
+    <div id="intro-screen">
+        <div class="intro-title">Bienvenue dans le calculateur de déport</div>
+        <div class="intro-sub">Cliquez pour continuer</div>
+    </div>
+
+    <div class="phone-frame">
+        
+        <div class="app-header">
+            <div class="title-main">Rossignol Grip Vide Coding</div>
+            <div class="title-sub">Calculateur de déport</div>
+        </div>
+
+        <div class="screen-bezel">
+            <div class="grid-bg"></div>
+            <div class="anchor">
+                <div class="beam b-rear" id="visBeamR" style="width: 50px;"><div class="rear-block"></div></div>
+                <div class="beam b-front" id="visBeamF" style="width: 80px;">
+                    <div class="load-point"></div>
+                </div>
+            </div>
+            <div class="pivot-container">
+                <svg viewBox="0 0 100 150" preserveAspectRatio="xMidYMax">
+                    <path d="M50 0 L55 15 L45 15 Z" fill="#4b5563"/>
+                    <path d="M55 15 Q70 80 85 150 L15 150 Q30 80 45 15 Z" fill="#4b5563"/>
+                    <path d="M30 90 L70 90" stroke="#333" stroke-width="2"/>
+                    <path d="M40 50 L60 50" stroke="#333" stroke-width="2"/>
+                    <path d="M25 150 Q50 120 75 150" fill="transparent" stroke="#000" stroke-width="3"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="control-deck">
+
+            <div class="module">
+                <div class="mod-header" style="color:#10b981;">CONFIGURATIONS GÉOMÉTRIQUES</div>
+                <div class="split-row">
+                    <div class="half-col">
+                        <div class="slider-box" style="border-color: #10b981;">
+                            <input type="range" id="slDistR" min="0.5" max="10" step="0.1" value="2.0">
+                        </div>
+                        <div class="led-row rear-layout">
+                            <div class="led-label">DIST. ARRIÈRE (M)</div>
+                            <input type="number" id="inDistR_Led" class="led-input standard-led text-green" value="2.00" inputmode="decimal">
+                        </div>
+                    </div>
+                    
+                    <div class="half-col">
+                        <div class="slider-box" style="border-color: #ef4444;">
+                            <input type="range" id="slDistF" min="0.5" max="10" step="0.1" value="3.0">
+                        </div>
+                        <div class="led-row front-layout">
+                            <div class="led-label">DIST. AVANT (M)</div>
+                            <input type="number" id="inDistF_Led" class="led-input standard-led text-red" value="3.00" inputmode="decimal">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="module module-red">
+                <div class="mod-header" style="color:#ef4444;">CHARGES & RÉSULTATS</div>
+
+                <div class="main-red-row">
+                    <div class="left-monolith-col">
+                        <div class="led-label" style="color: #f59e0b;">POIDS REQUIS (KG)</div>
+                        <input type="number" id="outTotal" class="led-input monolith-led text-orange" value="0" readonly>
+                    </div>
+                    <div class="right-stack-col">
+                        <div>
+                            <div class="led-label">TÊTE / PROJ (KG)</div>
+                            <div style="position:relative; width:100%;">
+                                <input type="number" id="inWHead" class="led-input standard-led text-red" value="10" inputmode="decimal">
+                                <div class="chk-overlay">
+                                    <input type="checkbox" id="chkHead"><label for="chkHead" class="chk-label">ON</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="led-label">CAMÉRA / ACCESSOIRES (KG)</div>
+                            <input type="number" id="inWCam" class="led-input standard-led text-red" value="30" inputmode="decimal">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-stack-row">
+                    <div class="detail-group">
+                        <div class="led-label">NOMBRE DE GUEUSES REQUISES</div>
+                        <input type="text" id="outCount" class="led-input standard-led text-blue" value="--" readonly>
+                    </div>
+                    <div class="detail-group">
+                        <div class="led-label">POIDS D'UNE GUEUSE (KG)</div>
+                        
+                        <div class="slider-box" style="border-color: #3b82f6; margin-bottom: 5px;">
+                            <input type="range" id="slUnit" min="1" max="50" step="0.5" value="10">
+                        </div>
+                        
+                        <input type="number" id="inUnit" class="led-input standard-led" placeholder="ex: 10" value="10">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const intro = document.getElementById('intro-screen');
+        intro.addEventListener('click', () => {
+            intro.style.opacity = '0';
+            setTimeout(() => { intro.style.display = 'none'; }, 600);
+            try {
+                const isMobile = window.innerWidth <= 768;
+                if (isMobile) {
+                    const elem = document.documentElement;
+                    if (elem.requestFullscreen) elem.requestFullscreen().catch(() => {});
+                    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+                }
+            } catch (e) { console.log("Erreur plein écran ignorée"); }
+        });
+
+        const PX_M = 20;
+        const outTotal = document.getElementById('outTotal');
+        const outCount = document.getElementById('outCount');
+        const inUnit = document.getElementById('inUnit');
+        const slUnit = document.getElementById('slUnit');
+        const inDistR_Led = document.getElementById('inDistR_Led');
+        const slDistR = document.getElementById('slDistR');
+        const inDistF_Led = document.getElementById('inDistF_Led');
+        const slDistF = document.getElementById('slDistF');
+        const inWHead = document.getElementById('inWHead');
+        const chkHead = document.getElementById('chkHead');
+        const inWCam = document.getElementById('inWCam');
+        const visBeamR = document.getElementById('visBeamR');
+        const visBeamF = document.getElementById('visBeamF');
+        const screenBox = document.querySelector('.screen-bezel');
+        const anchor = document.querySelector('.anchor');
+
+        function updateSliderFill(slider, color) {
+            const val = parseFloat(slider.value);
+            const min = parseFloat(slider.min);
+            const max = parseFloat(slider.max);
+            const percent = ((val - min) / (max - min)) * 100;
+            const direction = slider.id === 'slDistR' ? 'to left' : 'to right';
+            slider.style.background = `linear-gradient(${direction}, ${color} 0%, ${color} ${percent}%, #333 ${percent}%, #333 100%)`;
+        }
+
+        function triggerWobble() {
+            anchor.classList.remove('wobble-active');
+            void anchor.offsetWidth; 
+            anchor.classList.add('wobble-active');
+        }
+
+        function calculate(isInputEvent = false) {
+            let dR = parseFloat(slDistR.value);
+            let dF = parseFloat(slDistF.value);
+            
+            if (document.activeElement !== inDistR_Led) inDistR_Led.value = dR.toFixed(2);
+            if (document.activeElement !== inDistF_Led) inDistF_Led.value = dF.toFixed(2);
+
+            let wUnitVal = parseFloat(inUnit.value) || 0;
+            if (document.activeElement !== slUnit) {
+                let safeVal = Math.max(1, Math.min(50, wUnitVal));
+                slUnit.value = safeVal;
+            } else {
+                inUnit.value = slUnit.value;
+                wUnitVal = parseFloat(slUnit.value);
+            }
+
+            let wCam = parseFloat(inWCam.value) || 0;
+            let wHead = parseFloat(inWHead.value) || 0;
+            let totalLoad = wCam + (chkHead.checked ? wHead : 0);
+            let reqGueuses = dR > 0 ? (totalLoad * dF) / dR : 0;
+
+            outTotal.value = reqGueuses.toFixed(2);
+            if (wUnitVal > 0) {
+                outCount.value = (reqGueuses / wUnitVal).toFixed(1);
+                outCount.classList.remove('off');
+            } else {
+                outCount.value = "--";
+                outCount.classList.add('off');
+            }
+
+            updateVisuals(dR, dF);
+            updateSliderFill(slDistR, '#10b981');
+            updateSliderFill(slDistF, '#ef4444');
+            updateSliderFill(slUnit, '#3b82f6');
+
+            if(isInputEvent) { triggerWobble(); }
+        }
+
+        function updateUnitFromSlider() { inUnit.value = slUnit.value; calculate(true); }
+        function updateSliderFromUnit() { 
+            let val = parseFloat(inUnit.value) || 0;
+            let safeVal = Math.max(parseFloat(slUnit.min), Math.min(parseFloat(slUnit.max), val));
+            slUnit.value = safeVal;
+            calculate(true); 
+        }
+
+        function updateVisuals(dR, dF) {
+            let wR = dR * PX_M; let wF = dF * PX_M;
+            const maxW = (screenBox.offsetWidth / 2) - 20;
+            if (wR > maxW || wF > maxW) {
+                const ratio = maxW / Math.max(wR, wF);
+                wR *= ratio; wF *= ratio;
+            }
+            visBeamR.style.width = wR + 'px';
+            visBeamF.style.width = wF + 'px';
+        }
+
+        function syncSliderFromLed(ledInput, sliderInput) {
+            let val = parseFloat(ledInput.value);
+            if (!isNaN(val)) {
+                sliderInput.value = val;
+                calculate(true);
+            }
+        }
+
+        function attachWheelScroll(slider) {
+            slider.addEventListener('wheel', (e) => {
+                e.preventDefault(); 
+                const step = parseFloat(slider.step);
+                let newVal = parseFloat(slider.value) + (e.deltaY > 0 ? -1 : 1) * step;
+                newVal = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), newVal));
+                slider.value = newVal;
+                if (slider === slUnit) {
+                    slider.value = newVal;
+                    updateUnitFromSlider();
+                } else {
+                    slider.value = newVal;
+                    calculate(true);
+                }
+            }, { passive: false });
+        }
+
+        slDistR.addEventListener('input', () => calculate(true));
+        inDistR_Led.addEventListener('input', () => syncSliderFromLed(inDistR_Led, slDistR));
+        attachWheelScroll(slDistR); 
+        
+        slUnit.addEventListener('input', updateUnitFromSlider);
+        inUnit.addEventListener('input', updateSliderFromUnit);
+        attachWheelScroll(slUnit);
+
+        slDistF.addEventListener('input', () => calculate(true));
+        inDistF_Led.addEventListener('input', () => syncSliderFromLed(inDistF_Led, slDistF));
+        attachWheelScroll(slDistF); 
+        inWCam.addEventListener('input', () => calculate(true));
+        inWHead.addEventListener('input', () => calculate(true));
+        chkHead.addEventListener('change', () => calculate(true));
+
+        new ResizeObserver(() => calculate(false)).observe(screenBox);
+        calculate(false);
+    </script>
+</body>
+</html>

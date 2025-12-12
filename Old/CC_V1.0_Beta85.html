@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Calculateur de déport V1</title>
+    <style>
+        /* --- BASE & FONTS --- */
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; outline: none; }
+        
+        /* --- FOND LIQUIDE ET SOMBRE --- */
+        html, body {
+            background-color: #000;
+            height: 100%;
+            width: 100%;
+            /* SHNOP ANTI-GONFLETTE : On interdit au mobile de grossir le texte tout seul ! */
+            -webkit-text-size-adjust: none;
+            text-size-adjust: none;
+        }
+
+        body {
+            background: radial-gradient(circle at 50% -20%, #112a25, #000000 70%);
+            color: #e0f2fe;
+            font-family: 'Share Tech Mono', monospace;
+            /* Utilisation de 100% de la hauteur du HTML/fenêtre pour le body */
+            min-height: 100vh;
+            width: 100vw; margin: 0; padding: 0;
+            display: flex; justify-content: center; align-items: center; 
+            overflow: hidden; /* CRUCIAL : Aucune barre de défilement globale */
+        }
+
+        /* --- INTRO SCREEN (GLASS STYLE) --- */
+        #intro-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(15px);
+            z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer;
+            transition: opacity 0.6s ease-out;
+        }
+        .intro-title {
+            color: #0ff; font-size: 1.8rem; font-weight: bold; text-transform: uppercase;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.8); 
+            margin-bottom: 20px; text-align: center; padding: 0 20px;
+        }
+        .intro-sub {
+            color: rgba(255,255,255,0.7); font-size: 1.2rem; letter-spacing: 2px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; text-shadow: 0 0 10px #0ff; } 100% { opacity: 0.5; } }
+
+        /* --- CADRE PRINCIPAL (MODIFIÉ POUR LE SCALING) --- */
+        .phone-frame {
+            /* DEFINITION DE LA TAILLE DE BASE FIXE (Ratio ~9/16) */
+            width: 540px;  
+            height: 960px;
+            
+            /* SHNOP FIX MOBILE : Positionnement ABSOLU pour un centrage parfait indépendant du scroll */
+            position: absolute; 
+            top: 50%; 
+            left: 50%;
+            /* On prépare le centrage, le JS ajoutera le scale() à la suite */
+            transform: translate(-50%, -50%);
+            
+            flex-shrink: 0;
+
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.5); 
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            /* Ombres légèrement ajustées pour le mode "flottant" */
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.05), 0 20px 50px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            display: flex; flex-direction: column; padding: 15px; overflow: hidden;
+            /* Le JS appliquera "transform: scale(...)" ici */
+            transform-origin: center center;
+            transition: transform 0.1s ease-out; /* Fluide lors du redimensionnement */
+        }
+        
+        .phone-frame::before {
+            content: ''; position: absolute; top: 0; left: -50%; width: 200%; height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.03), transparent);
+            transform: rotate(25deg); pointer-events: none;
+        }
+
+        /* --- HEADER --- */
+        .app-header { 
+            display: flex; flex-direction: row; align-items: center; 
+            justify-content: space-between; /* Titre à gauche, Bouton à droite */
+            width: 100%; padding: 0 5px 10px 5px; margin-bottom: 5px; flex-shrink: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1); 
+        }
+        
+        /* STYLE DU NOM DE L'APPLI (Comme sur la photo) */
+        .app-name { 
+            color: rgba(255,255,255,0.6); 
+            font-size: 0.8rem; 
+            letter-spacing: 2px; 
+            font-style: italic; 
+            text-transform: uppercase;
+            text-shadow: 0 0 5px rgba(255,255,255,0.1);
+        }
+
+        .fs-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(0, 255, 255, 0.3); color: #0ff;
+            padding: 6px 12px; border-radius: 20px; cursor: pointer;
+            font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase;
+            transition: all 0.3s ease; display: flex; align-items: center; justify-content: center;
+            white-space: nowrap; height: auto; backdrop-filter: blur(4px);
+        }
+        .fs-btn:hover { background: rgba(0, 255, 255, 0.2); box-shadow: 0 0 15px rgba(0, 255, 255, 0.4); border-color: #0ff; color: #fff; }
+
+        /* --- VISUALISATION (Haut) --- */
+        .screen-bezel {
+            flex: 0 0 28%; /* Hauteur fixe proportionnelle dans le cadre de base */
+            background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            position: relative; margin-bottom: 12px; overflow: hidden; display: flex; justify-content: center; align-items: flex-end; min-height: 0; backdrop-filter: blur(5px);
+        }
+        .grid-bg {
+            position: absolute; width:100%; height:100%;
+            background-image: linear-gradient(rgba(0, 255, 255, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.15) 1px, transparent 1px);
+            background-position: calc(50% - 0.5px) bottom; pointer-events: none;
+            /* La taille de la grille sera gérée par le JS pour rester proportionnelle */
+        }
+
+        /* --- GRUE (Style Néon) --- */
+        .pivot-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 50%; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; pointer-events: none; opacity: 0.8; }
+        
+        .anchor { position: absolute; bottom: 50%; left: 50%; z-index: 10; transform-origin: bottom center; transform: translateX(-50%); }
+        .beam { height: 6px; position: absolute; top: -3px; display: flex; align-items: center; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); }
+        
+        /* Barres lumineuses - Couleurs harmonisées */
+        .b-rear { right: 0; border-radius: 2px 0 0 2px; box-shadow: 0 0 15px rgba(248, 113, 113, 0.6); background: rgba(248, 113, 113, 0.3); border: 1px solid rgba(248, 113, 113, 0.4); }
+        .b-front { left: 0; border-radius: 0 2px 2px 0; box-shadow: 0 0 15px rgba(52, 211, 153, 0.6); background: rgba(52, 211, 153, 0.4); border: 1px solid rgba(52, 211, 153, 0.4); }
+        
+        /* --- LE GUEUSIER --- */
+        .rear-block {
+            position: absolute; left: 0; bottom: -20px;
+            width: 34px; height: 40px;
+            background: rgba(20, 0, 0, 0.8);
+            border: 1px solid #ef4444;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4), inset 0 0 10px rgba(239, 68, 68, 0.2);
+            border-radius: 3px;
+            transform-origin: center top; transform: translateX(-50%); cursor: move; touch-action: none;
+            display: flex; flex-direction: column-reverse; align-items: center; justify-content: flex-start;
+            padding: 3px; gap: 1px; z-index: 20; overflow: hidden;
+        }
+        .gueuse-line { width: 100%; height: 2px; background-color: #fecaca; box-shadow: 0 0 4px #ef4444; border-radius: 1px; flex-shrink: 0; }
+        
+        /* --- LA CAMERA (VERTE) --- */
+        .load-point {
+            position: absolute; right: 0; bottom: -18px; width: 44px; height: 30px;
+            background: rgba(0, 20, 20, 0.85); border: 1px solid #34d399; box-shadow: 0 0 15px rgba(52, 211, 153, 0.5); border-radius: 4px;
+            z-index: 20; transform-origin: center center; transform: translateX(50%); cursor: move; touch-action: none; display: flex; align-items: center; justify-content: center;
+        }
+        .load-point::after { content: ''; width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #fff, #34d399); border: 2px solid #fff; box-shadow: 0 0 10px #34d399; margin-left: 8px; }
+        .load-point::before { content: ''; position: absolute; top: -4px; left: 8px; width: 12px; height: 3px; background: #34d399; border-radius: 2px; box-shadow: 0 0 5px #34d399; }
+        
+        .rear-block:active { cursor: grabbing; border-color: #fff; box-shadow: 0 0 25px #ef4444; }
+        .load-point:active { cursor: grabbing; border-color: #fff; box-shadow: 0 0 25px #34d399; }
+
+        /* --- ANIMATIONS --- */
+        /* Wobble (La Danse des Curseurs) */
+        @keyframes sway { 
+            0% { transform: translateX(-50%) rotate(0deg); } 
+            25% { transform: translateX(-50%) rotate(-2.4deg); } 
+            50% { transform: translateX(-50%) rotate(2.4deg); } 
+            75% { transform: translateX(-50%) rotate(-0.8deg); } 
+            100% { transform: translateX(-50%) rotate(0deg); } 
+        }
+        @keyframes sway-left { 
+            0% { transform: translateX(-50%) rotate(0deg); } 
+            30% { transform: translateX(-50%) rotate(-4.8deg); } 
+            60% { transform: translateX(-50%) rotate(1.6deg); } 
+            100% { transform: translateX(-50%) rotate(0deg); } 
+        }
+        @keyframes sway-right { 
+            0% { transform: translateX(-50%) rotate(0deg); } 
+            30% { transform: translateX(-50%) rotate(4.8deg); } 
+            60% { transform: translateX(-50%) rotate(-1.6deg); } 
+            100% { transform: translateX(-50%) rotate(0deg); } 
+        }
+        
+        .wobble-active { animation: sway 1s ease-out; } 
+        .wobble-left { animation: sway-left 1s ease-out; } 
+        .wobble-right { animation: sway-right 1s ease-out; }
+
+        /* Effet "Je te tiens !" - Shnop Grab */
+        .shnop-grab {
+            filter: brightness(1.5) drop-shadow(0 0 15px white) !important;
+            border-color: #fff !important;
+            z-index: 100 !important;
+            cursor: grabbing !important;
+        }
+
+        @keyframes sway-from-bottom { 0% { transform: translateX(-50%) rotate(var(--start-angle)); } 100% { transform: translateX(-50%) rotate(0deg); } }
+        @keyframes sway-from-top { 0% { transform: translateX(-50%) rotate(var(--start-angle)); } 100% { transform: translateX(-50%) rotate(0deg); } }
+        .anim-sway-bottom { animation: sway-from-bottom 0.8s ease-out forwards; }
+        .anim-sway-top { animation: sway-from-top 0.8s ease-out forwards; }
+        @keyframes counter-sway-cam-bottom { 0% { transform: translateX(50%) rotate(calc(var(--start-angle) * -1)); } 100% { transform: translateX(50%) rotate(0deg); } }
+        @keyframes counter-sway-cam-top { 0% { transform: translateX(50%) rotate(calc(var(--start-angle) * -1)); } 100% { transform: translateX(50%) rotate(0deg); } }
+        .anim-sway-bottom .load-point { animation: counter-sway-cam-bottom 0.8s ease-out forwards; }
+        .anim-sway-top .load-point { animation: counter-sway-cam-top 0.8s ease-out forwards; }
+        @keyframes counter-sway-rear-bottom { 0% { transform: translateX(-50%) rotate(calc(var(--start-angle) * -1)); } 100% { transform: translateX(-50%) rotate(0deg); } }
+        @keyframes counter-sway-rear-top { 0% { transform: translateX(-50%) rotate(calc(var(--start-angle) * -1)); } 100% { transform: translateX(-50%) rotate(0deg); } }
+        .anim-sway-bottom .rear-block { animation: counter-sway-rear-bottom 0.8s ease-out forwards; }
+        .anim-sway-top .rear-block { animation: counter-sway-rear-top 0.8s ease-out forwards; }
+
+        /* --- CONTRÔLES --- */
+        /* Modification CRUCIALE : overflow: hidden pour empêcher les ascenseurs internes */
+        .control-deck { flex: 1; display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; padding-top: 2px; overflow: hidden; }
+        
+        .module { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; flex-direction: column; flex: 1; justify-content: flex-start; gap: 8px; width: 100%; backdrop-filter: blur(8px); }
+        /* HEADER (On le garde juste pour structurer si besoin, mais vide) */
+        .mod-header { display: none; }
+
+        /* BARRE DE NAVIGATION NÉON SLIM */
+        .nav-bar { 
+            display: flex; 
+            width: 100%; 
+            gap: 8px; /* Petit espace entre les boutons */
+            margin-bottom: 12px; 
+            flex-shrink: 0; 
+        }
+        
+        .nav-btn {
+            flex: 1; /* Largeur égale pour tous (33%) */
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.3);
+            
+            /* FINESSE : Padding réduit */
+            padding: 6px 0; 
+            
+            border-radius: 4px;
+            font-family: 'Share Tech Mono', monospace; 
+            font-size: 0.75rem; /* Texte compact */
+            cursor: pointer; 
+            transition: all 0.3s ease;
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .nav-btn:hover { 
+            background: rgba(255,255,255,0.08); 
+            border-color: rgba(255,255,255,0.5); 
+            color: #fff; 
+        }
+
+        .nav-btn.active { 
+            background: rgba(0, 255, 255, 0.1); 
+            border-color: #0ff; 
+            color: #fff; 
+            /* Lueur néon fine */
+            box-shadow: 0 0 8px rgba(0, 255, 255, 0.3), inset 0 0 5px rgba(0, 255, 255, 0.1);
+            text-shadow: 0 0 5px #0ff; 
+            font-weight: bold;
+        }
+
+        /* CONTENU DES ONGLETS */
+        .tab-content { display: none; animation: fadeIn 0.3s ease-out; width: 100%; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .split-row { display: flex; flex-direction: column; gap: 12px; width: 100%; height: auto; }
+                /* L'ordre est maintenant défini par le HTML : Avant (Haut) puis Arrière (Bas) */ 
+
+        .led-input { background: rgba(0,0,0,0.3); border: none; border-bottom: 2px solid rgba(255,255,255,0.1); color: #fff; font-family: 'Share Tech Mono', monospace; text-align: center; width: 100%; outline: none; border-radius: 4px; text-shadow: 0 0 5px currentColor; transition: all 0.3s; padding: 0; }
+        .led-input:focus { background: rgba(0,0,0,0.5); border-bottom-color: currentColor; box-shadow: 0 10px 20px -10px currentColor; }
+        
+        .text-orange { color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.6); }
+        .text-green { color: #34d399; text-shadow: 0 0 10px rgba(52, 211, 153, 0.6); }
+        .text-red { color: #f87171; text-shadow: 0 0 10px rgba(248, 113, 113, 0.6); }
+        .text-blue { color: #60a5fa; text-shadow: 0 0 10px rgba(96, 165, 250, 0.6); }
+        
+        .shnop-layout { display: flex; flex-direction: row; gap: 15px; height: 100%; min-height: 0; flex: 1; }
+        
+        /* CADRE GAUCHE (Résultats) : Devenu ROUGE (Bordure Arrière) */
+        .shnop-left-panel { 
+            flex: 1 1 0; 
+            min-width: 0; 
+            /* Fond rouge très léger + Bordure Rouge */
+            background: rgba(239, 68, 68, 0.05); 
+            border: 1px solid #ef4444; 
+            border-radius: 12px; 
+            display: flex; flex-direction: column; justify-content: space-evenly; align-items: center; 
+            padding: 5px; 
+            box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.05), 0 0 15px rgba(239, 68, 68, 0.1); 
+        }
+        
+        /* CADRE DROIT (Contrôles) : Fond BLEU (Caméra) + Bordure VERTE (Bras Avant) */
+        .shnop-right-panel { 
+            flex: 1 1 0; 
+            min-width: 0; 
+            /* Fond bleu cyan très léger */
+            background: rgba(6, 182, 212, 0.05);
+            /* Bordure Verte */
+            border: 1px solid #34d399;
+            border-radius: 12px; /* Même arrondi pour la symétrie */
+            display: flex; flex-direction: column; justify-content: space-between; 
+            padding: 5px; /* Même padding pour la symétrie */
+            gap: 5px; 
+            /* Mix de lueurs Bleu/Vert */
+            box-shadow: inset 0 0 20px rgba(6, 182, 212, 0.05), 0 0 15px rgba(52, 211, 153, 0.1);
+        }
+
+        .led-label { font-size: 0.8rem; color: rgba(255,255,255,0.5); text-align: center; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .big-result { font-size: 2.9rem; line-height: 1; font-weight: bold; text-shadow: 0 0 20px rgba(251, 191, 36, 0.6); margin: 10px 0; background: transparent; border: none; }
+        .sub-result-row { width: 100%; display: flex; flex-direction: column; gap: 5px; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; margin-top: 5px; }
+        .sub-res-val { font-size: 2.9rem; font-weight: bold; background: transparent; border: none; }
+        .std-input { font-size: 1.4rem; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 2px; transition: all 0.3s; }
+        .std-input:focus { background: rgba(0,0,0,0.5); border-color: #fff; }
+        .standard-led { font-size: 1.8rem; height: 42px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+
+        .slider-box { position: relative; height: 26px; /* Épaisseur réduite de 20% pour plus de finesse ! */ width: 100%; background: rgba(255,255,255,0.1); border-radius: 8px; /* On garde l'arrondi pour le côté chic */ display: flex; align-items: center; margin-bottom: 5px; flex-shrink: 0; }
+        #slDistR { direction: rtl; }
+        
+        input[type=range] { -webkit-appearance: none; width: 100%; height: 100%; background: transparent; cursor: pointer; z-index: 50; touch-action: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; background: #fff; border-radius: 50%; box-shadow: 0 0 10px #fff; opacity: 0; }
+
+        .led-row { display: flex; align-items: center; width: 100%; margin-bottom: 2px; }
+        .led-row input { width: 50%; margin: 0; }
+        .led-row .led-label { width: 50%; margin: 0; font-size: 0.8rem; line-height: 1.1; }
+        .front-layout { flex-direction: row; }
+        .front-layout .led-label { text-align: right; padding-right: 10px; }
+        .rear-layout .led-label { order: 2; text-align: left; padding-left: 10px; }
+        .rear-layout input { order: 1; }
+
+        .chk-overlay { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); z-index: 5; }
+        .toggle-btn { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.3); padding: 4px 8px; border-radius: 8px; cursor: pointer; font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; letter-spacing: 1px; min-width: 40px; backdrop-filter: blur(4px); text-align: center; }
+        .toggle-btn:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+        .toggle-btn.active { background: rgba(52, 211, 153, 0.15); border-color: #34d399; color: #fff; box-shadow: 0 0 12px rgba(52, 211, 153, 0.4); text-shadow: 0 0 8px #34d399; font-weight: bold; }
+
+        .footer-brand { 
+            position: absolute; bottom: 0; left: 0;
+            flex: 0 0 auto; width: 100%; 
+            padding-top: 8px; 
+            border-top: 1px solid rgba(255,255,255,0.1); 
+            display: flex; justify-content: center; align-items: center;
+            
+            /* RETOUR DU BLEU ROSSIGNOL */
+            font-size: 0.75rem; 
+            color: #0ff; 
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.6);
+            letter-spacing: 2px;
+            font-weight: bold;
+            
+            background: rgba(0,0,0,0.7); 
+            border-radius: 0 0 24px 24px; 
+            z-index: 1000;
+        }
+
+        /* NOTE IMPORTANTE : LA MEDIA QUERY (max-width: 768px) A ÉTÉ SUPPRIMÉE.
+           Le script JS gère maintenant l'adaptation pour toutes les tailles d'écran. */
+
+    </style>
+</head>
+<body>
+
+    <div id="intro-screen">
+        <div class="intro-title">Shnop Glass Interface</div>
+        <div class="intro-sub">Initialisation du système...</div>
+    </div>
+
+    <div class="phone-frame">
+        
+        <div class="app-header">
+            <div class="app-name">Calculateur de déport V1.0 Beta</div>
+            <button id="fsBtn" class="fs-btn" title="Plein Écran">PLEIN ÉCRAN</button>
+        </div>
+
+        <div class="screen-bezel">
+            <div class="grid-bg"></div>
+            <div class="anchor">
+                <div class="beam b-rear" id="visBeamR" style="width: 50px;">
+                    <div class="rear-block" id="rearBlock"></div>
+                </div>
+                <div class="beam b-front" id="visBeamF" style="width: 80px;">
+                    <div class="load-point"></div>
+                </div>
+            </div>
+            <div class="pivot-container">
+                <svg viewBox="0 0 100 80" preserveAspectRatio="xMidYMax" style="width: auto; height: 100%;">
+                    <defs>
+                        <linearGradient id="gradLeft" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:rgba(0, 255, 255, 0.1);stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:rgba(0, 20, 20, 0.8);stop-opacity:1" />
+                        </linearGradient>
+                        <linearGradient id="gradRight" x1="100%" y1="0%" x2="0%" y2="0%">
+                            <stop offset="0%" style="stop-color:rgba(0, 150, 150, 0.2);stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:rgba(0, 10, 10, 0.9);stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M 50 5 L 50 80 L 15 70 Z" fill="url(#gradLeft)" stroke="#0ff" stroke-width="0.5" />
+                    <path d="M 50 30 L 25 51 M 50 55 L 18 65" stroke="rgba(0, 255, 255, 0.4)" stroke-width="0.5" />
+                    <path d="M 50 5 L 85 70 L 50 80 Z" fill="url(#gradRight)" stroke="#0ff" stroke-width="0.5" />
+                    <path d="M 50 30 L 75 51 M 50 55 L 82 65" stroke="rgba(0, 255, 255, 0.4)" stroke-width="0.5" />
+                    <line x1="50" y1="5" x2="50" y2="80" stroke="#0ff" stroke-width="1.5" stroke-linecap="round" />
+                    <circle cx="50" cy="5" r="3" fill="#f87171" stroke="#fff" stroke-width="1" box-shadow="0 0 10px red" />
+                </svg>
+            </div>
+        </div>
+
+        <div class="control-deck">
+
+            <div class="module" style="display: flex; flex-direction: column; height: 100%; gap: 10px;">
+                
+                <div class="nav-bar">
+                    <button class="nav-btn active" onclick="setTab(1)">CONFIG</button>
+                    <button class="nav-btn" onclick="setTab(2)">SOL</button>
+                    <button class="nav-btn" onclick="setTab(3)">HAUTEUR</button>
+                </div>
+
+                <div id="tab-1" class="tab-content active">
+                    <div style="display: flex; gap: 15px; width: 100%; margin-bottom: 10px;">
+                        
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                            <div class="led-label" style="text-align: center; width: 100%;">DIST. ARRIÈRE (M)</div>
+                            <input type="number" id="inDistR_Led" class="led-input standard-led text-red" value="2.00" inputmode="decimal">
+                        </div>
+
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                            <div class="led-label" style="text-align: center; width: 100%;">DIST. AVANT (M)</div>
+                            <input type="number" id="inDistF_Led" class="led-input standard-led text-green" value="3.00" inputmode="decimal">
+                        </div>
+
+                    </div>
+
+                    <div class="slider-box" id="sbDistF" style="margin-bottom: 8px;">
+                        <input type="range" id="slDistF" min="0.5" max="10" step="0.1" value="3.0">
+                    </div>
+
+                    <div class="slider-box" id="sbDistR">
+                        <input type="range" id="slDistR" min="0.5" max="10" step="0.1" value="2.0">
+                    </div>
+                </div>
+
+                <div id="tab-2" class="tab-content">
+                    <div style="text-align:center; padding: 20px 0; color:rgba(255,255,255,0.3); font-size:0.7rem; border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px;">
+                        ZONE CHARGE AU SOL<br>-- EN CONSTRUCTION --
+                    </div>
+                </div>
+
+                <div id="tab-3" class="tab-content">
+                    <div style="text-align:center; padding: 20px 0; color:rgba(255,255,255,0.3); font-size:0.7rem; border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px;">
+                        ZONE HAUTEURS<br>-- EN CONSTRUCTION --
+                    </div>
+                </div>
+
+                <div id="calc-module" style="flex: 1; display: flex; flex-direction: column; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                    
+                    <div class="shnop-layout">
+                        <div class="shnop-left-panel">
+                            
+                            <div style="flex:2; display:flex; flex-direction:column; justify-content:center; width:100%; gap: 10px;">
+                                
+                                <div>
+                                    <div class="led-label" style="color: #fbbf24;">POIDS REQUIS (KG)</div>
+                                    <input type="number" id="outTotal" class="led-input big-result text-orange" value="0" readonly>
+                                </div>
+
+                                <div>
+                                    <div class="led-label" style="color:rgba(251, 191, 36, 0.7);">NBRE GUEUSES</div>
+                                    <input type="text" id="outCount" class="led-input sub-res-val text-orange" value="--" readonly>
+                                </div>
+
+                            </div>
+
+                            <div class="sub-result-row" style="flex: 1; justify-content: flex-end; border-color: rgba(239, 68, 68, 0.3);">
+                                <div style="width:100%;">
+                                    <div class="led-label" style="color:rgba(251, 191, 36, 0.7);">POIDS TOTAL (KG)</div>
+                                    <input type="number" id="outRealTotal" class="led-input sub-res-val text-orange" value="0" readonly>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="shnop-right-panel">
+                            <div class="mod-header" style="color:#f87171; justify-content: center; width: 100%;">CALCULATEUR DE CHARGE</div>
+
+                            <div>
+                                <div class="led-label">TÊTE / PROJECTEUR (KG)</div>
+                                <div style="position:relative; width:100%;">
+                                    <input type="number" id="inWHead" class="led-input std-input text-green" value="10" inputmode="decimal">
+                                    <div class="chk-overlay"><button id="btnHead" class="toggle-btn">OFF</button></div>
+                                </div>
+                                <div class="slider-box" id="sbWHead" style="margin-top: 2px;">
+                                    <input type="range" id="slWHead" min="0" max="50" step="1" value="10">
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="led-label">CAMÉRA / ACCESSOIRES (KG)</div>
+                                <div style="position:relative; width:100%;">
+                                    <input type="number" id="inWCam" class="led-input std-input text-green" value="30" inputmode="decimal">
+                                    <div class="chk-overlay"><button id="btnCam" class="toggle-btn active">ON</button></div>
+                                </div>
+                                <div class="slider-box" id="sbWCam" style="margin-top: 2px;">
+                                    <input type="range" id="slWCam" min="0" max="50" step="1" value="30">
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="led-label">POIDS DU BRAS (KG)</div>
+                                <div style="position:relative; width:100%;">
+                                    <input type="number" id="inWAdd" class="led-input std-input text-blue" value="5" inputmode="decimal">
+                                    <div class="chk-overlay"><button id="btnAdd" class="toggle-btn">OFF</button></div>
+                                </div>
+                                <div class="slider-box" id="sbWAdd" style="margin-top: 2px;">
+                                    <input type="range" id="slWAdd" min="5" max="100" step="1" value="5">
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="led-label">POIDS DE LA BASE (KG)</div>
+                                <div style="position:relative; width:100%;">
+                                    <input type="number" id="inWBase" class="led-input std-input text-blue" value="0" inputmode="decimal">
+                                    <div class="chk-overlay"><button id="btnBase" class="toggle-btn">OFF</button></div>
+                                </div>
+                                <div class="slider-box" id="sbWBase" style="margin-top: 2px;">
+                                    <input type="range" id="slWBase" min="5" max="400" step="1" value="20">
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="led-label">POIDS 1 GUEUSE (KG)</div>
+                                <div style="position:relative; width:100%;">
+                                    <input type="number" id="inUnit" class="led-input std-input text-red" value="10" inputmode="decimal">
+                                    <div class="chk-overlay"><button id="btnUnit" class="toggle-btn active">ON</button></div>
+                                </div>
+                                <div class="slider-box" id="sbUnit" style="margin-top: 2px;">
+                                    <input type="range" id="slUnit" min="1" max="50" step="0.5" value="10">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="footer-brand">
+            Rossignol Grip Vibe Coding
+        </div>
+
+    </div>
+
+    <script>
+        function scaleToFit() {
+            // 1. Définir la taille de base de notre design
+            const baseWidth = 540;
+            const baseHeight = 960;
+
+            // 2. Obtenir la taille actuelle de la fenêtre
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+
+            // 3. Calculer les ratios d'échelle horizontale et verticale
+            const scaleX = windowWidth / baseWidth;
+            const scaleY = windowHeight / baseHeight;
+
+            // 4. FIXE ULTIME : Nous revenons au Contain (Math.min) et comptons sur le meta-tag
+            // et les styles HTML/BODY pour que la couleur noire remplisse les marges restantes.
+            const scaleFactor = Math.min(scaleX, scaleY);
+            
+            // 5. Appliquer la transformation CSS au conteneur principal
+            const appFrame = document.querySelector('.phone-frame');
+            if (appFrame) {
+                // SHNOP FIX : On garde le centrage (translate) et on applique l'échelle (scale)
+                appFrame.style.transform = `translate(-50%, -50%) scale(${scaleFactor})`;
+            }
+        }
+
+        // Exécuter la mise à l'échelle au chargement et à chaque redimensionnement
+        window.addEventListener('resize', scaleToFit);
+        // On attend que le DOM soit prêt
+        document.addEventListener('DOMContentLoaded', scaleToFit);
+        // Appel de sécurité immédiat
+        scaleToFit();
+
+
+        // --- LE RESTE DU SCRIPT ORIGINAL ---
+        const intro = document.getElementById('intro-screen');
+        intro.addEventListener('click', () => {
+            intro.style.opacity = '0';
+            setTimeout(() => { intro.style.display = 'none'; }, 600);
+            try {
+                // Sur mobile, on tente le plein écran au premier clic
+                const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                if (isMobile) {
+                    const elem = document.documentElement;
+                    if (elem.requestFullscreen) elem.requestFullscreen().catch(() => {});
+                    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+                }
+            } catch (e) { console.log("Erreur plein écran ignorée"); }
+        });
+
+        const fsBtn = document.getElementById('fsBtn');
+        fsBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {});
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        });
+
+        
+        // PX_M est maintenant calculé par rapport à la taille FIXE du container, pas la fenêtre
+        let PX_M = 20; 
+        const screenBox = document.querySelector('.screen-bezel');
+        const gridBg = document.querySelector('.grid-bg');
+
+        function updateScale() {
+            // On utilise la largeur fixe du conteneur parent pour le calcul
+            const refWidth = document.querySelector('.phone-frame').offsetWidth;
+            const maxMetersSide = 10;
+            const marginMeters = 1;
+            const totalMeters = (maxMetersSide + marginMeters) * 2; 
+            // Le screenBox fait 28% de la hauteur, on estime sa largeur relative
+            PX_M = (refWidth * 0.9) / totalMeters; // 0.9 est une estimation de la largeur interne après padding
+            
+            gridBg.style.backgroundSize = `${PX_M}px ${PX_M}px`;
+            gridBg.style.backgroundPositionX = `calc(50% - 0.5px)`;
+            calculate(null);
+        }
+        
+        // On lance updateScale une fois au début, plus besoin d'observer le resize car le conteneur est fixe
+        setTimeout(updateScale, 100);
+
+        const outTotal = document.getElementById('outTotal');
+        const outRealTotal = document.getElementById('outRealTotal');
+        const outCount = document.getElementById('outCount');
+        const inUnit = document.getElementById('inUnit');
+        const slUnit = document.getElementById('slUnit');
+        const inDistR_Led = document.getElementById('inDistR_Led');
+        const slDistR = document.getElementById('slDistR');
+        const inDistF_Led = document.getElementById('inDistF_Led');
+        const slDistF = document.getElementById('slDistF');
+        
+        const inWHead = document.getElementById('inWHead');
+        const btnHead = document.getElementById('btnHead');
+        const slWHead = document.getElementById('slWHead'); 
+
+        const inWCam = document.getElementById('inWCam');
+        const btnCam = document.getElementById('btnCam');
+        const slWCam = document.getElementById('slWCam'); 
+
+        // NOUVEAU : POIDS DU BRAS
+        const inWAdd = document.getElementById('inWAdd');
+        const btnAdd = document.getElementById('btnAdd');
+        const slWAdd = document.getElementById('slWAdd');
+
+        // NOUVEAU : BASE 
+
+        // NOUVEAU : BASE
+        const inWBase = document.getElementById('inWBase');
+        const btnBase = document.getElementById('btnBase');
+        const slWBase = document.getElementById('slWBase');
+
+        // NOUVEAU : BOUTON UNITÉ
+        const btnUnit = document.getElementById('btnUnit');
+
+        const visBeamR = document.getElementById('visBeamR');
+        const visBeamF = document.getElementById('visBeamF');
+        const anchor = document.querySelector('.anchor');
+        const rearBlock = document.querySelector('.rear-block');
+        const loadPoint = document.querySelector('.load-point');
+
+        let prevDistR = parseFloat(slDistR.value);
+        let prevDistF = parseFloat(slDistF.value);
+
+        function triggerWobble(source) {
+            // Nettoyage complet pour éviter les conflits
+            anchor.classList.remove('anim-sway-bottom', 'anim-sway-top', 'wobble-active', 'wobble-left', 'wobble-right');
+            anchor.style.transform = ''; 
+            void anchor.offsetWidth; // Reset magique CSS
+
+            if (source === 'unit' || source === 'load') {
+                anchor.classList.add('wobble-active');
+            } else if (source === 'R') {
+                let curr = parseFloat(slDistR.value);
+                if (curr > prevDistR) anchor.classList.add('wobble-left');
+                else anchor.classList.add('wobble-right');
+                prevDistR = curr;
+            } else if (source === 'F') {
+                let curr = parseFloat(slDistF.value);
+                if (curr > prevDistF) anchor.classList.add('wobble-right');
+                else anchor.classList.add('wobble-left');
+                prevDistF = curr;
+            }
+        }
+
+        function updateSliderFill(slider, color) {
+            const val = parseFloat(slider.value);
+            const min = parseFloat(slider.min);
+            const max = parseFloat(slider.max);
+            const percent = ((val - min) / (max - min)) * 100;
+            const direction = slider.id === 'slDistR' ? 'to left' : 'to right';
+            slider.parentElement.style.background = `linear-gradient(${direction}, ${color} 0%, ${color} ${percent}%, rgba(255,255,255,0.1) ${percent}%, rgba(255,255,255,0.1) 100%)`;
+            slider.parentElement.style.boxShadow = `0 0 10px ${color}40`; 
+        }
+
+        // --- DESSIN DES LIGNES LUMINEUSES ---
+        function updateGueuseVisuals(count) {
+            rearBlock.innerHTML = '';
+            let unitW = parseFloat(inUnit.value) || 10;
+            let totalFront = parseFloat(outRealTotal.value) || 0;
+            if (unitW <= 0) return;
+            let visualMax = totalFront / unitW; 
+            if (visualMax < 1) visualMax = 1;
+            let safeCount = Math.min(count, 50); 
+            if (safeCount <= 0) return;
+            for(let i = 0; i < safeCount; i++) {
+                let div = document.createElement('div');
+                div.className = 'gueuse-line';
+                rearBlock.appendChild(div);
+            }
+        }
+
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let startDistVal = 0; // <--- On mémorise la position du slider au départ
+        let dragTarget = null;
+        let currentRotation = 0; 
+        
+        const ROT_SENSITIVITY = 0.25; 
+        const MAX_ROT = 20; 
+
+        function handleDragStart(e) {
+            isDragging = true;
+            dragTarget = e.currentTarget;
+            
+            // On prend la position brute de la souris
+            startX = e.touches ? e.touches[0].clientX : e.clientX;
+            startY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            // ON MÉMORISE LA VALEUR DE DÉPART (Pour éviter le saut !)
+            if (dragTarget === rearBlock) {
+                startDistVal = parseFloat(slDistR.value);
+            } else if (dragTarget === loadPoint) {
+                startDistVal = parseFloat(slDistF.value);
+            }
+
+            // 1. On fige l'oscillation pour viser (INDISPENSABLE pour le confort)
+            anchor.classList.remove('anim-sway-bottom', 'anim-sway-top', 'wobble-active', 'wobble-left', 'wobble-right');
+            
+            // 2. Effet visuel GRAB
+            dragTarget.classList.add('shnop-grab');
+
+            // 3. Reset visuel rotation pour partir propre
+            anchor.style.transform = `translateX(-50%) rotate(0deg)`;
+            loadPoint.style.transform = `translateX(50%) rotate(0deg)`;
+            rearBlock.style.transform = `translateX(-50%) rotate(0deg)`;
+        }
+
+        function handleDragMove(e) {
+            if (!isDragging || !dragTarget) return;
+            if (e.cancelable && e.type === 'touchmove') e.preventDefault();
+
+            // 1. Récupération de l'échelle (pour que le mouvement suive parfaitement le doigt)
+            const appFrame = document.querySelector('.phone-frame');
+            const currentScale = appFrame.getBoundingClientRect().width / appFrame.offsetWidth;
+
+            // 2. Coordonnées actuelles
+            const currentX = e.touches ? e.touches[0].clientX : e.clientX;
+            const currentY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            // 3. CALCUL DU DÉPLACEMENT (DELTA) - C'est ça qui empêche le saut !
+            // On regarde de combien on a bougé depuis le clic de départ
+            const deltaPixels = (currentX - startX) / currentScale;
+            const deltaMeters = deltaPixels / PX_M;
+
+            let targetSlider = null;
+
+            if (dragTarget === rearBlock) {
+                targetSlider = slDistR;
+                // Arrière : vers la gauche (négatif) = distance augmente
+                // On part de la valeur mémorisée (startDistVal) et on soustrait le mouvement
+                let newDist = startDistVal - deltaMeters;
+                newDist = Math.max(parseFloat(targetSlider.min), Math.min(parseFloat(targetSlider.max), newDist));
+                targetSlider.value = newDist;
+
+            } else if (dragTarget === loadPoint) {
+                targetSlider = slDistF;
+                // Avant : vers la droite (positif) = distance augmente
+                // On part de la valeur mémorisée (startDistVal) et on ajoute le mouvement
+                let newDist = startDistVal + deltaMeters;
+                newDist = Math.max(parseFloat(targetSlider.min), Math.min(parseFloat(targetSlider.max), newDist));
+                targetSlider.value = newDist;
+            }
+
+            if (targetSlider) {
+                // On met à jour les calculs sans relancer l'animation wobble (null)
+                calculate(null); 
+            }
+
+            // --- GESTION DE LA ROTATION & STEADY CAM (Zone Sacrée) ---
+            const deltaY = (currentY - startY) / currentScale;
+            let angle = deltaY * ROT_SENSITIVITY;
+            
+            // Inversion pour l'arrière
+            if (dragTarget === rearBlock) angle = -angle; 
+            
+            currentRotation = Math.max(-MAX_ROT, Math.min(MAX_ROT, angle));
+            
+            // L'ANCRE PIVOTE
+            anchor.style.transform = `translateX(-50%) rotate(${currentRotation}deg)`;
+            
+            // STEADY CAM : LES ÉLÉMENTS PIVOTENT EN SENS INVERSE POUR RESTER DROITS
+            // C'est ici que la magie opère ! 👇
+            loadPoint.style.transform = `translateX(50%) rotate(${-currentRotation}deg)`;
+            rearBlock.style.transform = `translateX(-50%) rotate(${-currentRotation}deg)`;
+        }
+
+        function handleDragEnd() {
+            if (!isDragging) return;
+            isDragging = false;
+
+            // On retire l'effet lumineux
+            if (dragTarget) dragTarget.classList.remove('shnop-grab');
+
+            const overshootAngle = MAX_ROT * 0.25; 
+            let finalStartAngle = currentRotation;
+
+            if (currentRotation > 2) {
+                finalStartAngle = currentRotation + overshootAngle;
+                anchor.classList.remove('anim-sway-top');
+                anchor.classList.add('anim-sway-bottom');
+            } else if (currentRotation < -2) {
+                finalStartAngle = currentRotation - overshootAngle;
+                anchor.classList.remove('anim-sway-bottom');
+                anchor.classList.add('anim-sway-top');
+            } else {
+                finalStartAngle = currentRotation;
+                anchor.classList.remove('anim-sway-top');
+                anchor.classList.add('anim-sway-bottom');
+            }
+
+            anchor.style.setProperty('--start-angle', `${finalStartAngle}deg`);
+
+            // NETTOYAGE TOTAL (La clé du fix !)
+            anchor.style.transform = ``;
+            loadPoint.style.transform = ``;  // On redresse la caméra
+            rearBlock.style.transform = ``;  // On redresse le gueusier
+
+            dragTarget = null;
+            currentRotation = 0;
+        }
+
+        rearBlock.addEventListener('mousedown', handleDragStart);
+        loadPoint.addEventListener('mousedown', handleDragStart);
+        document.addEventListener('mousemove', handleDragMove);
+        document.addEventListener('mouseup', handleDragEnd);
+
+        rearBlock.addEventListener('touchstart', handleDragStart, {passive: false});
+        loadPoint.addEventListener('touchstart', handleDragStart, {passive: false});
+        document.addEventListener('touchmove', handleDragMove, {passive: false});
+        document.addEventListener('touchend', handleDragEnd);
+
+
+        function calculate(source = null) {
+            let dR = parseFloat(slDistR.value);
+            let dF = parseFloat(slDistF.value);
+            
+            if (document.activeElement !== inDistR_Led) inDistR_Led.value = dR.toFixed(2);
+            if (document.activeElement !== inDistF_Led) inDistF_Led.value = dF.toFixed(2);
+
+            // Synchronisation des sliders
+            if (document.activeElement !== slWHead) slWHead.value = parseFloat(inWHead.value) || 0;
+            if (document.activeElement !== slWCam) slWCam.value = parseFloat(inWCam.value) || 0;
+            if (document.activeElement !== slWBase) slWBase.value = parseFloat(inWBase.value) || 0; // Nouveau
+
+            let wUnitVal = parseFloat(inUnit.value) || 0;
+            if (document.activeElement !== slUnit) {
+                let safeVal = Math.max(1, Math.min(50, wUnitVal));
+                slUnit.value = safeVal;
+            } else {
+                inUnit.value = slUnit.value;
+                wUnitVal = parseFloat(slUnit.value);
+            }
+
+            // Récupération des valeurs
+            let wCam = parseFloat(inWCam.value) || 0;
+            let wHead = parseFloat(inWHead.value) || 0;
+            let wAdd = parseFloat(inWAdd.value) || 0; 
+            let wBase = parseFloat(inWBase.value) || 0;
+            
+            // Vérification des boutons ON/OFF
+            let camActive = btnCam.classList.contains('active') ? wCam : 0;
+            let headActive = btnHead.classList.contains('active') ? wHead : 0;
+            let addActive = btnAdd.classList.contains('active') ? wAdd : 0;
+            let baseActive = btnBase.classList.contains('active') ? wBase : 0;
+            
+            // Calcul Charge Déportée (Cam + Tête + Bras)
+            let leverLoad = camActive + headActive + addActive;
+
+            // Calcul Gueuses Requises (La base ne compte pas ici)
+            let reqGueuses = dR > 0 ? (leverLoad * dF) / dR : 0;
+
+            // Grand Total (Ici on ajoute la base car elle pèse sur le sol)
+            let grandTotal = reqGueuses + leverLoad + baseActive;
+            
+            outRealTotal.value = grandTotal.toFixed(1);
+            outTotal.value = reqGueuses.toFixed(2);
+
+            // Calcul Nombre Gueuses (Si bouton activé et poids > 0)
+            let nbGueuses = 0;
+            let unitActive = btnUnit.classList.contains('active'); // Nouveau
+            
+            if (wUnitVal > 0 && unitActive) {
+                nbGueuses = reqGueuses / wUnitVal;
+                outCount.value = nbGueuses.toFixed(1);
+                outCount.classList.remove('off');
+            } else {
+                outCount.value = "--";
+                outCount.classList.add('off');
+                nbGueuses = 0; // Pas de visualisation si OFF
+            }
+
+            updateVisuals(dR, dF);
+            updateGueuseVisuals(nbGueuses);
+
+           // Mise à jour des couleurs Sliders
+            updateSliderFill(slDistR, 'rgba(248, 113, 113, 0.8)'); 
+            updateSliderFill(slDistF, 'rgba(52, 211, 153, 0.8)'); 
+            // Gueuse ROUGE
+            updateSliderFill(slUnit, 'rgba(248, 113, 113, 0.8)');
+            updateSliderFill(slWHead, 'rgba(52, 211, 153, 0.8)');
+            updateSliderFill(slWCam, 'rgba(52, 211, 153, 0.8)');
+            // Bras BLEU
+            updateSliderFill(slWAdd, 'rgba(96, 165, 250, 0.8)');
+            // Base BLEU
+            updateSliderFill(slWBase, 'rgba(96, 165, 250, 0.8)');
+
+            if(source) { triggerWobble(source); }
+        }
+
+        function updateUnitFromSlider() { inUnit.value = slUnit.value; calculate('unit'); }
+        function updateSliderFromUnit() { 
+            let val = parseFloat(inUnit.value) || 0;
+            let safeVal = Math.max(parseFloat(slUnit.min), Math.min(parseFloat(slUnit.max), val));
+            slUnit.value = safeVal;
+            calculate('unit'); 
+        }
+
+        function updateVisuals(dR, dF) {
+            let wR = dR * PX_M; 
+            let wF = dF * PX_M;
+            visBeamR.style.width = wR + 'px';
+            visBeamF.style.width = wF + 'px';
+        }
+
+        function syncSliderFromLed(ledInput, sliderInput, src) {
+            let val = parseFloat(ledInput.value);
+            if (!isNaN(val)) {
+                sliderInput.value = val;
+                calculate(src);
+            }
+        }
+
+        function attachWheelScroll(slider, src) {
+            slider.addEventListener('wheel', (e) => {
+                e.preventDefault(); 
+                const step = parseFloat(slider.step);
+                let newVal = parseFloat(slider.value) + (e.deltaY > 0 ? -1 : 1) * step;
+                newVal = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), newVal));
+                slider.value = newVal;
+                if (slider === slUnit) {
+                    slider.value = newVal;
+                    updateUnitFromSlider();
+                } else {
+                    slider.value = newVal;
+                    calculate(src);
+                }
+            }, { passive: false });
+        }
+
+        slDistR.addEventListener('input', () => calculate('R'));
+        inDistR_Led.addEventListener('input', () => syncSliderFromLed(inDistR_Led, slDistR, 'R'));
+        attachWheelScroll(slDistR, 'R'); 
+        
+        slUnit.addEventListener('input', updateUnitFromSlider);
+        inUnit.addEventListener('input', updateSliderFromUnit);
+        attachWheelScroll(slUnit, 'unit');
+
+        slDistF.addEventListener('input', () => calculate('F'));
+        inDistF_Led.addEventListener('input', () => syncSliderFromLed(inDistF_Led, slDistF, 'F'));
+        attachWheelScroll(slDistF, 'F'); 
+        
+        inWCam.addEventListener('input', () => calculate('load'));
+        
+        function toggleBtn(btn) {
+            btn.classList.toggle('active');
+            btn.innerText = btn.classList.contains('active') ? "ON" : "OFF";
+            calculate('load');
+        }
+
+        btnCam.addEventListener('click', () => toggleBtn(btnCam)); 
+        slWCam.addEventListener('input', () => { inWCam.value = slWCam.value; calculate('load'); });
+        inWCam.addEventListener('input', () => { calculate('load'); }); 
+        attachWheelScroll(slWCam, 'load');
+
+        // Listeners Poids Bras
+        btnAdd.addEventListener('click', () => toggleBtn(btnAdd));
+        slWAdd.addEventListener('input', () => { inWAdd.value = slWAdd.value; calculate('load'); });
+        inWAdd.addEventListener('input', () => { calculate('load'); });
+        attachWheelScroll(slWAdd, 'load');
+
+        btnHead.addEventListener('click', () => toggleBtn(btnHead));
+        slWHead.addEventListener('input', () => { inWHead.value = slWHead.value; calculate('load'); });
+        inWHead.addEventListener('input', () => { calculate('load'); });
+        attachWheelScroll(slWHead, 'load');
+
+        // NOUVEAUX LISTENERS (Base + Unit Button)
+        btnBase.addEventListener('click', () => toggleBtn(btnBase));
+        slWBase.addEventListener('input', () => { inWBase.value = slWBase.value; calculate('load'); });
+        inWBase.addEventListener('input', () => { calculate('load'); });
+        attachWheelScroll(slWBase, 'load');
+
+        btnUnit.addEventListener('click', () => toggleBtn(btnUnit)); // Toggle Gueuse
+
+// --- LOGIQUE DES ONGLETS ---
+        function setTab(idx) {
+            const cMod = document.getElementById('calc-module');
+            const rightPanel = cMod.querySelector('.shnop-right-panel');
+
+            // GESTION MAGIQUE : LE CADRE JAUNE RESTE FIDÈLE ! 👑
+            if(cMod) cMod.style.display = 'flex';
+
+            if (idx === 1) {
+                // Page 1 : On remet la visibilité normale
+                if(rightPanel) rightPanel.style.visibility = 'visible';
+            } else {
+                // Page 2 & 3 : On cache les intrus mais on garde l'espace !
+                if(rightPanel) rightPanel.style.visibility = 'hidden';
+            }
+
+            // 1. Mise à jour des BOUTONS LARGES (.nav-btn)
+            document.querySelectorAll('.nav-btn').forEach((btn, i) => {
+                if(i === idx - 1) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+            
+            // 2. Mise à jour du contenu visible
+            document.querySelectorAll('.tab-content').forEach((content, i) => {
+                if(i === idx - 1) content.classList.add('active');
+                else content.classList.remove('active');
+            });
+            
+            // Petit refresh si on revient sur l'onglet 1 pour être sûr
+            if(idx === 1) calculate(null);
+        }
+        // Appel initial du calcul
+        calculate();
+    </script>
+</body>
+</html>11:03 08/12/2025

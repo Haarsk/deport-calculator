@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Calculateur de déport V1.0 Beta 151 (Slow Physics)</title>
+    <style>
+        /* --- BASE & FONTS --- */
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; outline: none; }
+        
+        /* --- FOND LIQUIDE ET SOMBRE --- */
+        html, body {
+            background-color: #000;
+            height: 100%;
+            width: 100%;
+            -webkit-text-size-adjust: none;
+            text-size-adjust: none;
+        }
+
+        body {
+            background: radial-gradient(circle at 50% -20%, #112a25, #000000 70%);
+            color: #e0f2fe;
+            font-family: 'Share Tech Mono', monospace;
+            min-height: 100vh;
+            width: 100vw; margin: 0; padding: 0;
+            display: flex; justify-content: center; align-items: center; 
+            overflow: hidden;
+        }
+
+        /* --- INTRO SCREEN --- */
+        #intro-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(15px);
+            z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer;
+            transition: opacity 0.6s ease-out;
+        }
+        .intro-title {
+            color: #0ff; font-size: 1.8rem; font-weight: bold; text-transform: uppercase;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.8); 
+            margin-bottom: 20px; text-align: center; padding: 0 20px;
+        }
+        .intro-sub {
+            color: rgba(255,255,255,0.7); font-size: 1.2rem; letter-spacing: 2px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; text-shadow: 0 0 10px #0ff; } 100% { opacity: 0.5; } }
+
+        /* --- CADRE PRINCIPAL --- */
+        .phone-frame {
+            width: 540px;  
+            height: 960px;
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.5); 
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.05), 0 20px 50px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            display: flex; flex-direction: column; padding: 15px; overflow: hidden;
+            transform-origin: center center;
+            transition: transform 0.1s ease-out;
+        }
+        
+        .phone-frame::before {
+            content: ''; position: absolute; top: 0; left: -50%; width: 200%; height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.03), transparent);
+            transform: rotate(25deg); pointer-events: none;
+        }
+
+        /* --- HEADER --- */
+        .app-header { 
+            display: flex; flex-direction: row; align-items: center; 
+            justify-content: space-between;
+            width: 100%; padding: 0 5px 10px 5px; margin-bottom: 5px; flex-shrink: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1); 
+        }
+        
+        .app-name { 
+            color: rgba(255,255,255,0.6); 
+            font-size: 0.8rem; letter-spacing: 2px; font-style: italic; text-transform: uppercase;
+            text-shadow: 0 0 5px rgba(255,255,255,0.1);
+        }
+
+        .fs-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(0, 255, 255, 0.3); color: #0ff;
+            padding: 6px 12px; border-radius: 20px; cursor: pointer;
+            font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase;
+            transition: all 0.3s ease; display: flex; align-items: center; justify-content: center;
+            white-space: nowrap; height: auto; backdrop-filter: blur(4px);
+        }
+        .fs-btn:hover { background: rgba(0, 255, 255, 0.2); box-shadow: 0 0 15px rgba(0, 255, 255, 0.4); border-color: #0ff; color: #fff; }
+
+        /* --- VISUALISATION (FIXED RATIO 24:8) --- */
+        .screen-bezel {
+            width: 100%;
+            flex: 0 0 auto;
+            background: rgba(0, 0, 0, 0.6); 
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+            position: relative; margin-bottom: 12px; overflow: hidden; 
+            display: flex; justify-content: center; align-items: flex-end;
+            aspect-ratio: 3 / 1; 
+        }
+
+        .grid-bg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            /* Le background-size sera défini dynamiquement par JS */
+            background-image: 
+                linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px),
+                linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+                linear-gradient(0deg, rgba(0, 255, 255, 0.4) 1px, transparent 1px);
+            background-position: bottom center; /* Important pour que le sol soit toujours aligné */
+            transition: background-size 0.3s ease-out; /* Effet élastique fluide */
+        }
+
+        .top-info-tag {
+            position: absolute;
+            top: 0; /* Collé en haut */
+            background: #000;
+            color: #fff;
+            font-size: 0.9rem; /* Même taille que la grille */
+            font-family: 'Share Tech Mono', monospace;
+            padding: 2px 6px;
+            transform: translateX(-50%); /* Centré sur le point X */
+            pointer-events: none;
+            z-index: 60; /* Au-dessus de tout */
+            white-space: nowrap;
+        }
+
+        /* --- GRUE --- */
+        /* Conteneur du pivot qui bouge en % */
+        .pivot-container { 
+            position: absolute; 
+            bottom: 0; 
+            /* Left et Height définis par JS */
+            width: 0; 
+            z-index: 15; 
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-end; 
+            pointer-events: none; 
+        }
+
+        /* SVG qui couvre tout l'écran pour le trépied */
+        .svg-overlay {
+            position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:14;
+        }
+
+        /* Le point de pivot (Cercle HTML pour rester rond) */
+        .pivot-point {
+            position: absolute;
+            top: 0;
+            left: 0; /* Centré sur le container pivot */
+            transform: translate(-50%, -50%);
+            width: 14px; height: 14px; /* Un peu plus gros pour le doigt */
+            background: red;
+            border: 2px solid white;
+            border-radius: 50%;
+            z-index: 30; /* Au dessus des bras */
+            box-shadow: 0 0 8px red;
+            cursor: ns-resize; /* Curseur haut/bas */
+            pointer-events: auto; /* Active le clic */
+            touch-action: none;
+        }
+        
+        .anchor { 
+            position: absolute; 
+            bottom: 0px; 
+            /* Left défini par JS (suit le pivot) */
+            left: 50%; 
+            width: 0; height: 0;
+            z-index: 10; 
+        }
+
+        /* Bras en % de la largeur totale */
+        .beam { height: 6px; position: absolute; top: -3px; display: flex; align-items: center; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); }
+        
+        .b-rear { 
+            right: 0; /* S'accroche au pivot */
+            border-radius: 2px 0 0 2px; 
+            box-shadow: 0 0 15px rgba(248, 113, 113, 0.6); 
+            background: rgba(248, 113, 113, 0.3); border: 1px solid rgba(248, 113, 113, 0.4); 
+            transform-origin: right center;
+        }
+        .b-front { 
+            left: 0; /* S'accroche au pivot */
+            border-radius: 0 2px 2px 0; 
+            box-shadow: 0 0 15px rgba(52, 211, 153, 0.6); 
+            background: rgba(52, 211, 153, 0.4); border: 1px solid rgba(52, 211, 153, 0.4); 
+            transform-origin: left center;
+        }
+        
+        /* --- LE GUEUSIER (Taille définie par JS) --- */
+        .rear-block {
+            position: absolute; left: 0; 
+            /* Dimensions gérées par JS */
+            background: rgba(20, 0, 0, 0.8);
+            border: 1px solid #ef4444;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4), inset 0 0 10px rgba(239, 68, 68, 0.2);
+            border-radius: 4px;
+            transform-origin: center center; 
+            transform: translateX(0); 
+            cursor: move; touch-action: none;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+            padding: 5%; gap: 5%; 
+            z-index: 20; overflow: hidden;
+        }
+        .gueuse-line { width: 80%; height: 15%; background-color: #fecaca; box-shadow: 0 0 5px #ef4444; border-radius: 2px; flex-shrink: 0; }
+        
+        /* --- LA CAMERA (Taille définie par JS) --- */
+        .load-point {
+            position: absolute; left: 100%;
+            /* Dimensions gérées par JS */
+            background: rgba(0, 20, 20, 0.85); border: 2px solid #34d399; box-shadow: 0 0 15px rgba(52, 211, 153, 0.5); border-radius: 4px;
+            z-index: 20; 
+            transform-origin: top center; 
+            transform: translateX(0); 
+            cursor: move; touch-action: none; display: flex; align-items: center; justify-content: center;
+        }
+        /* Le rond fait 60% du carré parent */
+        .load-point::after { content: ''; width: 60%; height: 60%; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #fff, #34d399); border: 2px solid #fff; box-shadow: 0 0 10px #34d399; }
+        
+        /* On supprime le flash (::before) */
+        .load-point::before { display: none; }
+        
+        .rear-block:active { cursor: grabbing; border-color: #fff; box-shadow: 0 0 25px #ef4444; }
+        .load-point:active { cursor: grabbing; border-color: #fff; box-shadow: 0 0 25px #34d399; }
+
+        /* --- ANIMATIONS --- */
+        .shnop-grab { filter: brightness(1.5) drop-shadow(0 0 15px white) !important; border-color: #fff !important; z-index: 100 !important; cursor: grabbing !important; }
+
+        /* Classes animation supprimées car gérées en JS pur désormais */
+        .wobble-active, .wobble-left, .wobble-right, .anim-sway-bottom, .anim-sway-top { animation: none; }
+
+        /* --- CONTRÔLES --- */
+        .control-deck { flex: 1; display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; padding-top: 2px; overflow: hidden; }
+        .module { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; flex-direction: column; flex: 1; justify-content: flex-start; gap: 8px; width: 100%; backdrop-filter: blur(8px); }
+        .mod-header { display: none; }
+
+        .nav-bar { display: flex; width: 100%; gap: 8px; margin-bottom: 12px; flex-shrink: 0; }
+        .nav-btn { flex: 1; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.3); padding: 6px 0; border-radius: 4px; font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; cursor: pointer; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .nav-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.5); color: #fff; }
+        .nav-btn.active { background: rgba(0, 255, 255, 0.1); border-color: #0ff; color: #fff; box-shadow: 0 0 8px rgba(0, 255, 255, 0.3), inset 0 0 5px rgba(0, 255, 255, 0.1); text-shadow: 0 0 5px #0ff; font-weight: bold; }
+
+        .tab-content { display: none; animation: fadeIn 0.3s ease-out; width: 100%; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .split-row { display: flex; flex-direction: column; gap: 12px; width: 100%; height: auto; }
+
+        .led-input { background: rgba(0,0,0,0.3); border: none; border-bottom: 2px solid rgba(255,255,255,0.1); color: #fff; font-family: 'Share Tech Mono', monospace; text-align: center; width: 100%; outline: none; border-radius: 4px; text-shadow: 0 0 5px currentColor; transition: all 0.3s; padding: 0; }
+        .led-input:focus { background: rgba(0,0,0,0.5); border-bottom-color: currentColor; box-shadow: 0 10px 20px -10px currentColor; }
+        
+        .text-orange { color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.6); }
+        .text-green { color: #34d399; text-shadow: 0 0 10px rgba(52, 211, 153, 0.6); }
+        .text-red { color: #f87171; text-shadow: 0 0 10px rgba(248, 113, 113, 0.6); }
+        .text-blue { color: #60a5fa; text-shadow: 0 0 10px rgba(96, 165, 250, 0.6); }
+        
+        .shnop-layout { display: flex; flex-direction: row; gap: 15px; height: 100%; min-height: 0; flex: 1; }
+        
+        .shnop-left-panel { flex: 1 1 0; min-width: 0; background: rgba(239, 68, 68, 0.05); border: 1px solid #ef4444; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-evenly; align-items: center; padding: 5px; box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.05), 0 0 15px rgba(239, 68, 68, 0.1); }
+        
+        .shnop-right-panel { flex: 1 1 0; min-width: 0; background: rgba(6, 182, 212, 0.05); border: 1px solid #34d399; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between; padding: 5px; gap: 5px; box-shadow: inset 0 0 20px rgba(6, 182, 212, 0.05), 0 0 15px rgba(52, 211, 153, 0.1); }
+
+        .led-label { font-size: 0.8rem; color: rgba(255,255,255,0.5); text-align: center; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .big-result { font-size: 2.9rem; line-height: 1; font-weight: bold; text-shadow: 0 0 20px rgba(251, 191, 36, 0.6); margin: 10px 0; background: transparent; border: none; }
+        .sub-result-row { width: 100%; display: flex; flex-direction: column; gap: 5px; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; margin-top: 5px; }
+        .sub-res-val { font-size: 2.9rem; font-weight: bold; background: transparent; border: none; }
+        .std-input { font-size: 1.4rem; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 2px; transition: all 0.3s; }
+        .std-input:focus { background: rgba(0,0,0,0.5); border-color: #fff; }
+       .standard-led { font-size: 1.8rem; height: 42px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+
+        .slider-box { position: relative; height: 24px; width: 100%; background: rgba(255,255,255,0.1); border-radius: 12px; display: flex; align-items: center; margin-bottom: 5px; flex-shrink: 0; }
+        #slDistR { direction: rtl; }
+        
+        input[type=range] { -webkit-appearance: none; width: 100%; height: 100%; background: transparent; cursor: pointer; z-index: 50; touch-action: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 25px; width: 25px; background: #fff; border-radius: 50%; box-shadow: 0 0 10px #fff; opacity: 0; }
+
+        .led-row { display: flex; align-items: center; width: 100%; margin-bottom: 2px; }
+        .chk-overlay { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); z-index: 5; }
+        .toggle-btn { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.3); padding: 4px 8px; border-radius: 8px; cursor: pointer; font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; letter-spacing: 1px; min-width: 40px; backdrop-filter: blur(4px); text-align: center; }
+        .toggle-btn:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+        .toggle-btn.active { font-weight: bold; color: #fff; }
+        .toggle-btn.active.btn-green { background: rgba(52, 211, 153, 0.15); border-color: #34d399; box-shadow: 0 0 12px rgba(52, 211, 153, 0.4); text-shadow: 0 0 8px #34d399; }
+        .toggle-btn.active.btn-blue { background: rgba(96, 165, 250, 0.15); border-color: #60a5fa; box-shadow: 0 0 12px rgba(96, 165, 250, 0.4); text-shadow: 0 0 8px #60a5fa; }
+        .toggle-btn.active.btn-red { background: rgba(248, 113, 113, 0.15); border-color: #f87171; box-shadow: 0 0 12px rgba(248, 113, 113, 0.4); text-shadow: 0 0 8px #f87171; }
+        
+        /* Styles ajoutés pour le bouton LOCK orange */
+        .toggle-btn.active.btn-orange { background: rgba(251, 191, 36, 0.15); border-color: #fbbf24; box-shadow: 0 0 12px rgba(251, 191, 36, 0.4); text-shadow: 0 0 8px #fbbf24; }
+        .btn-orange-outline { border: 1px solid rgba(251, 191, 36, 0.5); color: #fbbf24; }
+        
+        .dimmed { opacity: 0.15; filter: grayscale(100%); transition: all 0.3s; }
+
+        .footer-brand { 
+            position: absolute; bottom: 0; left: 0;
+            flex: 0 0 auto; width: 100%; 
+            padding-top: 8px; 
+            border-top: 1px solid rgba(255,255,255,0.1); 
+            display: flex; justify-content: center; align-items: center;
+            font-size: 0.75rem; color: #0ff; text-shadow: 0 0 5px rgba(0, 255, 255, 0.6);
+            letter-spacing: 2px; font-weight: bold;
+            background: rgba(0,0,0,0.7); border-radius: 0 0 24px 24px; z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="intro-screen">
+        <div class="intro-title">Shnop Glass Interface</div>
+        <div class="intro-sub">Initialisation du système...</div>
+    </div>
+
+    <div class="phone-frame">
+        
+        <div class="app-header">
+            <div class="app-name">Calculateur de déport V1.0 Beta 151</div>
+            <button id="fsBtn" class="fs-btn" title="Plein Écran">PLEIN ÉCRAN</button>
+        </div>
+
+        <div class="screen-bezel">
+            <div class="grid-bg"></div>
+            <div id="gridLabels" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></div>
+            
+            <div id="infoRear" class="top-info-tag">H= 0.00 M</div>
+            <div id="infoFront" class="top-info-tag">H= 0.00 M</div>
+            
+            <svg class="svg-overlay" id="sceneSvg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <line id="visPlateLine" x1="0" y1="100" x2="0" y2="100" stroke="#0ff" stroke-width="6" vector-effect="non-scaling-stroke" />
+                <line id="visPivotLine" x1="50" y1="0" x2="50" y2="100" stroke="#0ff" stroke-width="4" vector-effect="non-scaling-stroke" />
+                <line id="visDiagL" x1="50" y1="0" x2="0" y2="100" stroke="#0ff" stroke-width="1" vector-effect="non-scaling-stroke" opacity="0.6" />
+                <line id="visDiagR" x1="50" y1="0" x2="100" y2="100" stroke="#0ff" stroke-width="1" vector-effect="non-scaling-stroke" opacity="0.6" />
+            </svg>
+
+            <div class="pivot-container" id="pivotContainer">
+                <div class="pivot-point"></div>
+            </div>
+
+            <div class="anchor" id="anchorBar">
+                <div class="beam b-rear" id="visBeamR">
+                    <div class="rear-block" id="rearBlock"></div>
+                </div>
+                <div class="beam b-front" id="visBeamF">
+                    <div class="load-point"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-deck">
+
+            <div class="module" style="display: flex; flex-direction: column; height: 100%; gap: 10px;">
+                
+                <div class="nav-bar">
+                    <button class="nav-btn active" onclick="setTab(1)">CONFIG</button>
+                    <button class="nav-btn" onclick="setTab(2)">SOL</button>
+                    <button class="nav-btn" onclick="setTab(3)">HAUTEUR</button>
+                </div>
+
+                <div id="tab-1" class="tab-content active">
+    <div style="display: flex; gap: 5px; width: 100%; margin-bottom: 10px; align-items: flex-end;">
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+            <div class="led-label" style="text-align: center; width: 100%; white-space: nowrap;">DIST. ARRIÈRE</div>
+            <input type="number" id="inDistR_Led" class="led-input standard-led text-red" value="2.50" inputmode="decimal">
+        </div>
+        
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+            <div class="led-label" style="text-align: center; width: 100%; white-space: nowrap;">LONG. TOTAL (M)</div>
+            <input type="number" id="inDistTotal" class="led-input standard-led text-blue" value="7.50" readonly style="pointer-events: none;">
+        </div>
+        
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+            <div class="led-label" style="text-align: center; width: 100%; white-space: nowrap;">DIST. AVANT</div>
+            <input type="number" id="inDistF_Led" class="led-input standard-led text-green" value="5.00" inputmode="decimal">
+        </div>
+        
+        <button id="btnLock" class="toggle-btn btn-orange-outline" style="height: 42px; margin-bottom: 2px; font-size: 0.65rem; padding: 0 2px; min-width: 35px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Verrouiller le schéma">LOCK</button>
+    </div>
+    <div class="slider-box" id="sbDistF" style="margin-bottom: 8px;">
+        <input type="range" id="slDistF" min="0.5" max="10" step="0.1" value="5.0">
+    </div>
+    <div class="slider-box" id="sbDistR">
+        <input type="range" id="slDistR" min="0.5" max="10" step="0.1" value="2.5">
+    </div>
+</div>
+
+                <div id="tab-2" class="tab-content">
+                    <div style="display: flex; gap: 15px; width: 100%; margin-bottom: 10px;">
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                            <div class="led-label" style="text-align: center; width: 100%;">LIMITE SOL (KG/M²)</div>
+                            <input type="number" id="inLimitSol" class="led-input standard-led text-red" value="150" inputmode="decimal">
+                        </div>
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                            <div class="led-label" style="text-align: center; width: 100%;">RÉPARTITION NÉCESSAIRE (M²)</div>
+                            <input type="number" id="inCalage" class="led-input standard-led text-blue" value="1.96" inputmode="decimal">
+                        </div>
+                    </div>
+                    <div class="slider-box" id="sbLimitSol" style="margin-bottom: 8px;">
+                        <input type="range" id="slLimitSol" min="50" max="500" step="10" value="150">
+                    </div>
+                    <div class="slider-box" id="sbCalage">
+                        <input type="range" id="slCalage" min="1.0" max="16.0" step="0.1" value="1.96">
+                    </div>
+                </div>
+
+                <div id="tab-3" class="tab-content">
+                    <div style="display: flex; gap: 15px; width: 100%; margin-bottom: 10px;">
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                            <div class="led-label" style="text-align: center; width: 100%;">HAUTEUR DU PIVOT (M)</div>
+                            <input type="number" id="inHeight" class="led-input standard-led text-blue" value="3.00" inputmode="decimal">
+                        </div>
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                            <div class="led-label" style="text-align: center; width: 100%; font-size: 0.7rem;">DÉCALAGE AXE OPTIQUE</div>
+                            <input type="number" id="inOffset" class="led-input standard-led text-green" value="0.00" inputmode="decimal">
+                        </div>
+                    </div>
+                    <div class="slider-box" id="sbHeight" style="margin-bottom: 8px;">
+                        <input type="range" id="slHeight" min="1" max="5" step="0.05" value="3.00">
+                    </div>
+                    <div class="slider-box" id="sbOffset">
+                        <input type="range" id="slOffset" min="0" max="2" step="0.05" value="0.00">
+                    </div>
+                </div>
+
+                <div id="calc-module" style="flex: 1; display: flex; flex-direction: column; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                    <div class="shnop-layout">
+                        <div class="shnop-left-panel">
+                            <div id="res-tab-1" style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:space-evenly; align-items:center;">
+                                <div style="flex:2; display:flex; flex-direction:column; justify-content:center; width:100%; gap: 10px;">
+                                    <div>
+                                        <div class="led-label" style="color: #fbbf24;">POIDS REQUIS (KG)</div>
+                                        <input type="number" id="outTotal" class="led-input big-result text-orange" value="0" readonly>
+                                    </div>
+                                    <div>
+                                        <div class="led-label" style="color:rgba(251, 191, 36, 0.7);">NBRE GUEUSES</div>
+                                        <input type="text" id="outCount" class="led-input sub-res-val text-orange" value="--" readonly>
+                                    </div>
+                                </div>
+                                <div class="sub-result-row" style="flex: 1; justify-content: flex-end; border-color: rgba(239, 68, 68, 0.3); gap: 5px;">
+                                    <div style="width:100%;">
+                                        <div class="led-label" style="color: #fbbf24;">POIDS DU DÉPORT (KG)</div>
+                                        <div class="led-label" style="color:rgba(251, 191, 36, 0.7); font-size: 0.65rem; margin-bottom: -5px;">(CHARGE+BRAS+GUEUSES)</div>
+                                        <input type="number" id="outLeverTotal" class="led-input sub-res-val text-orange" value="0" readonly style="font-size: 2.2rem;">
+                                    </div>
+                                    <div style="width:100%;">
+                                        <div class="led-label" style="color:rgba(251, 191, 36, 0.7);">POIDS TOTAL (KG)</div>
+                                        <input type="number" id="outRealTotal" class="led-input sub-res-val text-orange" value="0" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="res-tab-2" style="width:100%; height:100%; display:none; flex-direction:column; justify-content:space-evenly; align-items:center;">
+                                <div style="flex:2; display:flex; flex-direction:column; justify-content:center; width:100%; gap: 10px;">
+                                    <div>
+                                        <div class="led-label" style="color: #fbbf24;">PRESSION (KG/M²)</div>
+                                        <input type="number" id="outPressure" class="led-input big-result text-orange" value="0" readonly>
+                                    </div>
+                                    <div>
+                                        <div class="led-label" style="color:rgba(255,255,255,0.5);">STATUS</div>
+                                        <div id="outSafeStatus" class="led-input sub-res-val" style="font-size: 1.5rem; color:#fff; border:none; margin-top:5px;">--</div>
+                                    </div>
+                                </div>
+                                <div class="sub-result-row" style="flex: 1; justify-content: flex-end; border-color: rgba(239, 68, 68, 0.3); gap: 5px;">
+                                    <div style="width:100%;">
+                                        <div class="led-label" style="color: #fbbf24;">POIDS DU DÉPORT (KG)</div>
+                                        <div class="led-label" style="color:rgba(251, 191, 36, 0.7); font-size: 0.65rem; margin-bottom: -5px;">(CHARGE+BRAS+GUEUSES)</div>
+                                        <input type="number" id="outLeverTotal_Tab2" class="led-input sub-res-val text-orange" value="0" readonly style="font-size: 2.2rem;">
+                                    </div>
+                                    <div style="width:100%;">
+                                        <div class="led-label" style="color:rgba(251, 191, 36, 0.7);">POIDS TOTAL (KG)</div>
+                                        <input type="number" id="outRealTotal_Tab2" class="led-input sub-res-val text-orange" value="0" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="shnop-right-panel">
+                            <div id="ctrl-tab-1" style="width:100%; display: flex; flex-direction: column; justify-content: space-between; height: 100%; gap: 5px;">
+                                <div class="mod-header" style="color:#f87171; justify-content: center; width: 100%;">CALCULATEUR DE CHARGE</div>
+                                <div>
+                                    <div class="led-label">TÊTE / PROJECTEUR (KG)</div>
+                                    <div style="position:relative; width:100%;">
+                                        <input type="number" id="inWHead" class="led-input std-input text-green" value="10" inputmode="decimal">
+                                        <div class="chk-overlay"><button id="btnHead" class="toggle-btn btn-green">OFF</button></div>
+                                    </div>
+                                    <div class="slider-box" id="sbWHead" style="margin-top: 2px;">
+                                        <input type="range" id="slWHead" min="0" max="50" step="1" value="10">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="led-label">CAMÉRA / ACCESSOIRES (KG)</div>
+                                    <div style="position:relative; width:100%;">
+                                        <input type="number" id="inWCam" class="led-input std-input text-green" value="25" inputmode="decimal">
+                                        <div class="chk-overlay"><button id="btnCam" class="toggle-btn btn-green active">ON</button></div>
+                                    </div>
+                                    <div class="slider-box" id="sbWCam" style="margin-top: 2px;">
+                                        <input type="range" id="slWCam" min="0" max="50" step="1" value="25">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="led-label">POIDS DU BRAS (KG)</div>
+                                    <div style="position:relative; width:100%;">
+                                        <input type="number" id="inWAdd" class="led-input std-input text-green" value="50" inputmode="decimal">
+                                        <div class="chk-overlay"><button id="btnAdd" class="toggle-btn btn-green active">ON</button></div>
+                                    </div>
+                                    <div class="slider-box" id="sbWAdd" style="margin-top: 2px;">
+                                        <input type="range" id="slWAdd" min="5" max="100" step="1" value="50">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="led-label">POIDS DE LA BASE (KG)</div>
+                                    <div style="position:relative; width:100%;">
+                                        <input type="number" id="inWBase" class="led-input std-input text-blue" value="39" inputmode="decimal">
+                                        <div class="chk-overlay"><button id="btnBase" class="toggle-btn btn-blue active">ON</button></div>
+                                    </div>
+                                    <div class="slider-box" id="sbWBase" style="margin-top: 2px;">
+                                        <input type="range" id="slWBase" min="5" max="400" step="1" value="39">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="led-label">POIDS 1 GUEUSE (KG)</div>
+                                    <div style="position:relative; width:100%;">
+                                        <input type="number" id="inUnit" class="led-input std-input text-red" value="10" inputmode="decimal">
+                                        <div class="chk-overlay"><button id="btnUnit" class="toggle-btn btn-red active">ON</button></div>
+                                    </div>
+                                    <div class="slider-box" id="sbUnit" style="margin-top: 2px;">
+                                        <input type="range" id="slUnit" min="1" max="50" step="0.5" value="10">
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="ctrl-tab-2" style="width:100%; display: none; flex-direction: column; justify-content: space-between; height: 100%; position: relative;">
+                                <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                                    <div class="led-label" style="color: #60a5fa; margin-bottom: 5px;">VISUALISATION PLAQUE</div>
+                                    <div class="led-label" style="font-size: 0.65rem; opacity: 0.7;">MARGE DE SÉCURITÉ</div>
+                                    <div style="display: flex; align-items: baseline; gap: 4px;">
+                                        <span id="lblMaxP" style="font-size: 1.4rem; font-weight: bold; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.3);">--</span>
+                                        <span style="font-size: 0.7rem; color: #60a5fa;">KG/M²</span>
+                                    </div>
+                                </div>
+                                <div style="flex:1; width: 100%; display: flex; justify-content: center; align-items: center; position: relative; padding: 10px;">
+                                    <div style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; position: relative;">
+                                        <div id="plate-square" style="width: 140px; height: 140px; border: 2px solid #60a5fa; background: rgba(96, 165, 250, 0.2); box-shadow: 0 0 15px rgba(96, 165, 250, 0.2); position: relative; transition: width 0.2s, height 0.2s;">
+                                            <div id="lbl-side-w" style="position: absolute; bottom: -20px; width: 100%; text-align: center; color: #60a5fa; font-size: 0.8rem; font-weight: bold; text-shadow: 0 0 5px rgba(96, 165, 250, 0.5); white-space: nowrap;">0.50m</div>
+                                            <div id="lbl-side-h" style="position: absolute; right: -45px; top: 50%; transform: translateY(-50%); color: #60a5fa; font-size: 0.8rem; font-weight: bold; text-shadow: 0 0 5px rgba(96, 165, 250, 0.5);">0.50m</div>
+                                            <div style="position: absolute; top:50%; left:50%; width:4px; height:4px; background:#fff; transform:translate(-50%, -50%); border-radius:50%; box-shadow: 0 0 5px #fff;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="width: 100%;">
+                                    <div class="led-label" style="text-align: left; margin-bottom: 2px; font-size: 0.65rem;">FORME : CARRÉ <-> RECTANGLE</div>
+                                    <div class="slider-box" id="sbShape">
+                                        <input type="range" id="slShape" min="1" max="6" step="0.1" value="1">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-brand">Rossignol Grip Vibe Coding</div>
+    </div>
+
+    <script>
+        function scaleToFit() {
+            const baseWidth = 540; const baseHeight = 960;
+            const windowWidth = window.innerWidth; const windowHeight = window.innerHeight;
+            const scaleX = windowWidth / baseWidth; const scaleY = windowHeight / baseHeight;
+            const scaleFactor = Math.min(scaleX, scaleY);
+            const appFrame = document.querySelector('.phone-frame');
+            if (appFrame) { appFrame.style.transform = `translate(-50%, -50%) scale(${scaleFactor})`; }
+        }
+        window.addEventListener('resize', scaleToFit);
+        document.addEventListener('DOMContentLoaded', scaleToFit);
+        scaleToFit();
+
+        const intro = document.getElementById('intro-screen');
+        intro.addEventListener('click', () => {
+            intro.style.opacity = '0';
+            setTimeout(() => { intro.style.display = 'none'; }, 600);
+            try { if (window.innerWidth <= 768) document.documentElement.requestFullscreen().catch(() => {}); } catch (e) {}
+        });
+
+        const fsBtn = document.getElementById('fsBtn');
+        fsBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(err => {});
+            else if (document.exitFullscreen) document.exitFullscreen();
+        });
+
+        // --- GLOBAL REFERENCES ---
+        const screenBox = document.querySelector('.screen-bezel');
+        const gridBg = document.querySelector('.grid-bg');
+        const pivotContainer = document.getElementById('pivotContainer');
+        const pivotPoint = document.querySelector('.pivot-point'); // Reference au pivot
+        const anchorBar = document.getElementById('anchorBar');
+        const visBeamR = document.getElementById('visBeamR');
+        const visBeamF = document.getElementById('visBeamF');
+        
+        // SVG Elements
+        const visPlateLine = document.getElementById('visPlateLine');
+        const visPivotLine = document.getElementById('visPivotLine');
+        const visDiagL = document.getElementById('visDiagL');
+        const visDiagR = document.getElementById('visDiagR');
+
+        // Inputs & Results
+        const outTotal = document.getElementById('outTotal');
+        const outRealTotal = document.getElementById('outRealTotal');
+        const outLeverTotal = document.getElementById('outLeverTotal'); // NOUVEAU
+        const outCount = document.getElementById('outCount');
+        const outPressure = document.getElementById('outPressure');
+        const outSafeStatus = document.getElementById('outSafeStatus');
+        const outRealTotal_Tab2 = document.getElementById('outRealTotal_Tab2');
+        const outLeverTotal_Tab2 = document.getElementById('outLeverTotal_Tab2'); // NOUVEAU
+        const inUnit = document.getElementById('inUnit');
+        const slUnit = document.getElementById('slUnit');
+        const inDistR_Led = document.getElementById('inDistR_Led');
+        const inDistTotal = document.getElementById('inDistTotal'); // Nouvelle référence
+        const slDistR = document.getElementById('slDistR');
+        const inDistF_Led = document.getElementById('inDistF_Led');
+        const slDistF = document.getElementById('slDistF');
+        const inCalage = document.getElementById('inCalage');
+        const slCalage = document.getElementById('slCalage');
+        const inLimitSol = document.getElementById('inLimitSol');
+        const slLimitSol = document.getElementById('slLimitSol');
+        const inHeight = document.getElementById('inHeight');
+        const slHeight = document.getElementById('slHeight');
+        const inOffset = document.getElementById('inOffset'); // NOUVEAU
+        const slOffset = document.getElementById('slOffset'); // NOUVEAU
+        const inWHead = document.getElementById('inWHead');
+        const btnHead = document.getElementById('btnHead');
+        const slWHead = document.getElementById('slWHead'); 
+        const inWCam = document.getElementById('inWCam');
+        const btnCam = document.getElementById('btnCam');
+        const slWCam = document.getElementById('slWCam'); 
+        const inWAdd = document.getElementById('inWAdd');
+        const btnAdd = document.getElementById('btnAdd');
+        const slWAdd = document.getElementById('slWAdd');
+        const inWBase = document.getElementById('inWBase');
+        const btnBase = document.getElementById('btnBase');
+        const slWBase = document.getElementById('slWBase');
+        const btnUnit = document.getElementById('btnUnit');
+        const plateSquare = document.getElementById('plate-square');
+        const lblSideW = document.getElementById('lbl-side-w');
+        const lblSideH = document.getElementById('lbl-side-h');
+        const slShape = document.getElementById('slShape'); 
+        const lblMaxP = document.getElementById('lblMaxP'); 
+        const anchor = document.querySelector('.anchor');
+        const rearBlock = document.querySelector('.rear-block');
+        const loadPoint = document.querySelector('.load-point');
+        const btnLock = document.getElementById('btnLock');
+
+        let isSchematicLocked = false;
+        
+        btnLock.addEventListener('click', () => {
+            isSchematicLocked = !isSchematicLocked;
+            if (isSchematicLocked) {
+                btnLock.classList.add('active', 'btn-orange');
+                btnLock.classList.remove('btn-orange-outline');
+            } else {
+                btnLock.classList.remove('active', 'btn-orange');
+                btnLock.classList.add('btn-orange-outline');
+            }
+        });
+
+        let prevDistR = parseFloat(slDistR.value);
+        let prevDistF = parseFloat(slDistF.value);
+
+        function triggerWobble(source) {
+            // Animation supprimée au profit du moteur physique JS
+            // On laisse la fonction vide pour éviter les erreurs si appelée
+        }
+
+        function updateSliderFill(slider, color) {
+            const val = parseFloat(slider.value);
+            const min = parseFloat(slider.min);
+            const max = parseFloat(slider.max);
+            const percent = ((val - min) / (max - min)) * 100;
+            const direction = slider.id === 'slDistR' ? 'to left' : 'to right';
+            slider.parentElement.style.background = `linear-gradient(${direction}, ${color} 0%, ${color} ${percent}%, rgba(255,255,255,0.1) ${percent}%, rgba(255,255,255,0.1) 100%)`;
+            slider.parentElement.style.boxShadow = `0 0 10px ${color}40`; 
+        }
+
+        function updateGueuseVisuals() {
+            let valStr = outCount.value;
+            let count = (valStr === "--" || valStr === "") ? 0 : parseFloat(valStr);
+            rearBlock.innerHTML = '';
+            let visualCount = 1;
+            if (count > 12) visualCount = 3;
+            else if (count > 5) visualCount = 2;
+            else visualCount = 1;
+            for(let i = 0; i < visualCount; i++) {
+                let div = document.createElement('div');
+                div.className = 'gueuse-line';
+                rearBlock.appendChild(div);
+            }
+        }
+
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let startDistVal = 0; 
+        let dragTarget = null;
+        let currentRotation = 0; 
+        
+        // Variables pour l'animation physique JS
+        let swayAnimFrame = null;
+        let swayVelocity = 0;
+        const ROT_SENSITIVITY = 0.25; 
+
+        function handleDragStart(e) {
+            // Arrête toute animation en cours si on attrape un objet
+            if (swayAnimFrame) cancelAnimationFrame(swayAnimFrame);
+            swayVelocity = 0;
+
+            isDragging = true;
+            dragTarget = e.currentTarget;
+            startX = e.touches ? e.touches[0].clientX : e.clientX;
+            startY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            if (dragTarget === rearBlock) startDistVal = parseFloat(slDistR.value);
+            else if (dragTarget === loadPoint) startDistVal = parseFloat(slDistF.value);
+            else if (dragTarget === pivotPoint) startDistVal = parseFloat(slHeight.value);
+
+            // Nettoyage des anciennes classes CSS
+            anchor.classList.remove('anim-sway-bottom', 'anim-sway-top', 'wobble-active', 'wobble-left', 'wobble-right');
+            
+            if(dragTarget !== pivotPoint) dragTarget.classList.add('shnop-grab');
+            else dragTarget.style.transform = "translate(-50%, -50%) scale(1.5)";
+
+            if(dragTarget !== pivotPoint) {
+                // On fige la position visuelle actuelle pour le drag
+                anchor.style.transform = `translateX(0) rotate(${currentRotation}deg)`;
+                loadPoint.style.transform = `translateX(0) rotate(${-currentRotation}deg)`;
+                rearBlock.style.transform = `translateX(0) rotate(${-currentRotation}deg)`;
+            }
+        }
+
+        function handleDragMove(e) {
+            if (!isDragging || !dragTarget) return;
+            if (e.cancelable && e.type === 'touchmove') e.preventDefault();
+            const appFrame = document.querySelector('.phone-frame');
+            const currentScale = appFrame.getBoundingClientRect().width / appFrame.offsetWidth;
+            const currentX = e.touches ? e.touches[0].clientX : e.clientX;
+            const currentY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            // Calcul échelle
+            let W = screenBox.offsetWidth;
+            let H = screenBox.offsetHeight;
+            let totalArm = parseFloat(slDistR.value) + parseFloat(slDistF.value);
+            let pivotH = parseFloat(inHeight.value);
+            
+            let scaleW = (W * 0.8) / (totalArm > 1 ? totalArm : 1);
+            let scaleH = (H * 0.7) / (pivotH > 1 ? pivotH : 1);
+            let pxPerMeter = Math.min(scaleW, scaleH);
+
+            const deltaPixelsX = (currentX - startX) / currentScale;
+            const deltaPixelsY = (currentY - startY) / currentScale;
+            const deltaMetersX = deltaPixelsX / pxPerMeter; 
+            const deltaMetersY = deltaPixelsY / pxPerMeter; 
+
+            // --- LOGIQUE DE DÉPLACEMENT (SLIDERS) ---
+            if (!isSchematicLocked) {
+                let targetSlider = null;
+
+                if (dragTarget === rearBlock) {
+                    targetSlider = slDistR;
+                    let newDist = startDistVal - deltaMetersX;
+                    newDist = Math.max(parseFloat(targetSlider.min), Math.min(parseFloat(targetSlider.max), newDist));
+                    targetSlider.value = newDist;
+                } else if (dragTarget === loadPoint) {
+                    targetSlider = slDistF;
+                    let newDist = startDistVal + deltaMetersX;
+                    newDist = Math.max(parseFloat(targetSlider.min), Math.min(parseFloat(targetSlider.max), newDist));
+                    targetSlider.value = newDist;
+                } else if (dragTarget === pivotPoint) {
+                    targetSlider = slHeight;
+                    let newHeight = startDistVal - deltaMetersY; 
+                    newHeight = Math.max(parseFloat(targetSlider.min), Math.min(parseFloat(targetSlider.max), newHeight));
+                    
+                    targetSlider.value = newHeight;
+                    inHeight.value = newHeight.toFixed(2);
+                    updateSliderFill(targetSlider, 'rgba(96, 165, 250, 0.8)');
+                }
+
+                if (targetSlider) calculate(null);
+            }
+
+            // --- LOGIQUE DE ROTATION + COLLISION SOL ---
+            if (dragTarget !== pivotPoint) {
+                let angle = deltaPixelsY * ROT_SENSITIVITY;
+                if (dragTarget === rearBlock) angle = -angle; 
+                
+                // Calcul des butées
+                const h = parseFloat(inHeight.value) || 0;
+                const r = parseFloat(slDistR.value) || 0.1; 
+                const f = parseFloat(slDistF.value) || 0.1; 
+                const radToDeg = 180 / Math.PI;
+
+                let limitPositive = 88; 
+                if (h < f) limitPositive = Math.asin(h / f) * radToDeg;
+
+                let limitNegative = -88; 
+                if (h < r) limitNegative = -Math.asin(h / r) * radToDeg;
+
+                currentRotation = Math.max(limitNegative, Math.min(limitPositive, angle));
+                
+                // Application visuelle immédiate
+                anchor.style.transform = `translateX(0) rotate(${currentRotation}deg)`;
+                loadPoint.style.transform = `translateX(0) rotate(${-currentRotation}deg)`;
+                rearBlock.style.transform = `translateX(0) rotate(${-currentRotation}deg)`;
+
+                // Mise à jour du zoom en temps réel pendant le drag
+                calculate(null); 
+            }
+        }
+
+        function handleDragEnd() {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            if (dragTarget) {
+                dragTarget.classList.remove('shnop-grab');
+                if(dragTarget === pivotPoint) dragTarget.style.transform = "translate(-50%, -50%)";
+            }
+
+            dragTarget = null;
+            
+            // Au relâchement, on lance l'animation physique JS
+            animateSway();
+            updateGueuseVisuals();
+        }
+
+        // Fonction d'animation physique (Ressort "Lourd")
+        function animateSway() {
+            // Réglages ralentis (3x plus lent)
+            // Tension très basse pour simuler une masse importante
+            const tension = 0.015; 
+            // Friction plus élevée pour éviter que ça rebondisse trop longtemps
+            const friction = 0.92;
+
+            // Calcul de la vitesse vers 0 (position d'équilibre)
+            swayVelocity += (0 - currentRotation) * tension;
+            swayVelocity *= friction;
+            currentRotation += swayVelocity;
+
+            // Application visuelle
+            anchor.style.transform = `translateX(0) rotate(${currentRotation}deg)`;
+            loadPoint.style.transform = `translateX(0) rotate(${-currentRotation}deg)`;
+            rearBlock.style.transform = `translateX(0) rotate(${-currentRotation}deg)`;
+
+            // LE PLUS IMPORTANT : On recalcule le ZOOM à chaque image
+            calculate(null);
+
+            // Seuil d'arrêt plus fin pour éviter le micro-tremblement à la fin
+            if (Math.abs(currentRotation) > 0.01 || Math.abs(swayVelocity) > 0.01) {
+                swayAnimFrame = requestAnimationFrame(animateSway);
+            } else {
+                // Arrêt propre
+                currentRotation = 0;
+                swayVelocity = 0;
+                anchor.style.transform = `translateX(0) rotate(0deg)`;
+                loadPoint.style.transform = `translateX(0) rotate(0deg)`;
+                rearBlock.style.transform = `translateX(0) rotate(0deg)`;
+                calculate(null);
+            }
+        }
+
+        rearBlock.addEventListener('mousedown', handleDragStart);
+        loadPoint.addEventListener('mousedown', handleDragStart);
+        pivotPoint.addEventListener('mousedown', handleDragStart); 
+
+        document.addEventListener('mousemove', handleDragMove);
+        document.addEventListener('mouseup', handleDragEnd);
+        
+        rearBlock.addEventListener('touchstart', handleDragStart, {passive: false});
+        loadPoint.addEventListener('touchstart', handleDragStart, {passive: false});
+        pivotPoint.addEventListener('touchstart', handleDragStart, {passive: false});
+        
+        document.addEventListener('touchmove', handleDragMove, {passive: false});
+        document.addEventListener('touchend', handleDragEnd);
+
+        // --- MOTEUR DE RENDU PRINCIPAL ---
+        function calculate(source = null) {
+            let dR = parseFloat(slDistR.value);
+            let dF = parseFloat(slDistF.value);
+            
+            // Mise à jour de l'affichage TOTAL
+            if (inDistTotal) inDistTotal.value = (dR + dF).toFixed(2);
+
+            if (document.activeElement !== inDistR_Led) inDistR_Led.value = dR.toFixed(2);
+            if (document.activeElement !== inDistF_Led) inDistF_Led.value = dF.toFixed(2);
+            if (document.activeElement !== inCalage) inCalage.value = parseFloat(slCalage.value).toFixed(2);
+            if (document.activeElement !== inLimitSol) inLimitSol.value = parseFloat(slLimitSol.value).toFixed(0);
+            if (document.activeElement !== slWHead) slWHead.value = parseFloat(inWHead.value) || 0;
+            if (document.activeElement !== slWCam) slWCam.value = parseFloat(inWCam.value) || 0;
+            if (document.activeElement !== slWBase) slWBase.value = parseFloat(inWBase.value) || 0; 
+            
+            let wUnitVal = parseFloat(inUnit.value) || 0;
+            if (document.activeElement !== slUnit) {
+                let safeVal = Math.max(1, Math.min(50, wUnitVal));
+                slUnit.value = safeVal;
+            } else { inUnit.value = slUnit.value; wUnitVal = parseFloat(slUnit.value); }
+
+            let wCam = parseFloat(inWCam.value) || 0;
+            let wHead = parseFloat(inWHead.value) || 0;
+            let wAdd = parseFloat(inWAdd.value) || 0; 
+            let wBase = parseFloat(inWBase.value) || 0;
+            
+            let camActive = btnCam.classList.contains('active') ? wCam : 0;
+            let headActive = btnHead.classList.contains('active') ? wHead : 0;
+            let addActive = btnAdd.classList.contains('active') ? wAdd : 0;
+            let baseActive = btnBase.classList.contains('active') ? wBase : 0;
+            
+            let leverLoad = camActive + headActive + addActive;
+            let reqGueuses = dR > 0 ? (leverLoad * dF) / dR : 0;
+            
+            // Calcul du Poids du Déport
+            let leverTotal = leverLoad + reqGueuses;
+            
+            let grandTotal = leverTotal + baseActive;
+            
+            outRealTotal.value = grandTotal.toFixed(1);
+            if(outRealTotal_Tab2) outRealTotal_Tab2.value = grandTotal.toFixed(1);
+            outTotal.value = reqGueuses.toFixed(2);
+            
+            // Affichage Poids du Déport
+            if(outLeverTotal) outLeverTotal.value = leverTotal.toFixed(1);
+            if(outLeverTotal_Tab2) outLeverTotal_Tab2.value = leverTotal.toFixed(1); // NOUVEAU
+
+            let area = parseFloat(slCalage.value) || 0.25;
+            let limitLoad = parseFloat(slLimitSol.value) || 500;
+            let pressure = area > 0 ? grandTotal / area : 0;
+            let margin = limitLoad - pressure;
+
+            if(lblMaxP) {
+                let marginPrefix = margin > 0 ? "+" : "";
+                lblMaxP.innerText = marginPrefix + margin.toFixed(0);
+                if (margin < 0) { lblMaxP.style.color = "#f87171"; lblMaxP.style.textShadow = "0 0 10px rgba(248, 113, 113, 0.6)"; }
+                else { lblMaxP.style.color = "#34d399"; lblMaxP.style.textShadow = "0 0 10px rgba(52, 211, 153, 0.6)"; }
+            }
+
+            let ratio = 1;
+            if(slShape) {
+                ratio = parseFloat(slShape.value);
+                const val = parseFloat(slShape.value); const min = parseFloat(slShape.min); const max = parseFloat(slShape.max);
+                const percent = ((val - min) / (max - min)) * 100;
+                slShape.parentElement.style.background = `linear-gradient(to right, rgba(96, 165, 250, 0.8) 0%, rgba(96, 165, 250, 0.8) ${percent}%, rgba(255,255,255,0.1) ${percent}%, rgba(255,255,255,0.1) 100%)`;
+            }
+
+            let realW = Math.sqrt(area / ratio); let realH = area / realW;
+
+            // --- ZOOM AUTO / FIT TO SCREEN LOGIC ---
+            const W = screenBox.offsetWidth;
+            const H = screenBox.offsetHeight;
+
+            let totalArmMeters = dR + dF;
+            if (totalArmMeters < 1) totalArmMeters = 1; 
+            
+            let pivotHeightMeters = parseFloat(inHeight.value) || 3.0;
+            if (pivotHeightMeters < 0.1) pivotHeightMeters = 0.1;
+
+            // 1. Calcul Hauteur Max (Sommet physique absolu)
+            const angleRad = Math.abs(currentRotation * (Math.PI / 180));
+            const maxArmLength = Math.max(dR, dF); 
+            const axisMaxHeight = pivotHeightMeters + (maxArmLength * Math.sin(angleRad));
+            // Marge pour le haut de l'objet (Caméra/Gueusier)
+            const objectTopMargin = 0.50; 
+            const totalMaxHeightMeters = axisMaxHeight + objectTopMargin;
+
+            // 2. Zone étiquettes (Protection haut d'écran)
+            const LABEL_BAR_HEIGHT = 30; 
+            const availableHeightPx = H - LABEL_BAR_HEIGHT;
+
+            // 3. Calcul Echelles
+            // Largeur : (Bras + 2.00m gauche + 2.00m droite) = + 4.0m total
+            const scaleW = W / (totalArmMeters + 4.0);
+            
+            // Hauteur
+            const scaleH = availableHeightPx / totalMaxHeightMeters;
+
+            let pxPerMeter = Math.min(scaleW, scaleH);
+
+            const armWidthPx = totalArmMeters * pxPerMeter;
+            const startXPx = (W - armWidthPx) / 2;
+            const pivotXPx = startXPx + (dR * pxPerMeter);
+            const pivotYPx = pivotHeightMeters * pxPerMeter;
+
+            // --- APPLICATION AU DOM & SCALE PHYSIQUE ---
+            pivotContainer.style.left = pivotXPx + 'px';
+            pivotContainer.style.height = pivotYPx + 'px';
+            
+            anchorBar.style.left = pivotXPx + 'px';
+            anchorBar.style.bottom = pivotYPx + 'px';
+
+            // 1. Définition des épaisseurs réelles (en Mètres)
+            const beamThickM = 0.15; // Bras de 15cm d'épaisseur
+            const pivotDiamM = 0.25; // Pivot de 25cm de diamètre
+            
+            // 2. Conversion en pixels actuels
+            const beamPx = beamThickM * pxPerMeter;
+            const pivotPx = pivotDiamM * pxPerMeter;
+
+            // 3. Application aux Bras (Centrage vertical via top)
+            visBeamR.style.width = (dR * pxPerMeter) + 'px';
+            visBeamR.style.height = beamPx + 'px';
+            visBeamR.style.top = -(beamPx / 2) + 'px';
+
+            visBeamF.style.width = (dF * pxPerMeter) + 'px';
+            visBeamF.style.height = beamPx + 'px';
+            visBeamF.style.top = -(beamPx / 2) + 'px';
+            
+            // 4. Application au Pivot
+            pivotPoint.style.width = pivotPx + 'px';
+            pivotPoint.style.height = pivotPx + 'px';
+            // Le CSS gère déjà le translate(-50%, -50%)
+
+            // 5. Gueusier (0.80m large)
+            const rW = 0.80 * pxPerMeter; 
+            const rH = rW * 1.25; 
+            rearBlock.style.width = rW + 'px';
+            rearBlock.style.height = rH + 'px';
+            
+            // Modification ici : on décale de toute la largeur (-rW) 
+            // pour que le bord droit du gueusier touche la fin du bras
+            rearBlock.style.marginLeft = -rW + 'px';
+            
+            rearBlock.style.top = -(rH / 2) + 'px'; // Centré verticalement
+
+            // 6. Caméra (1.00m large)
+            const cS = 1.00 * pxPerMeter;
+            loadPoint.style.width = cS + 'px';
+            loadPoint.style.height = cS + 'px';
+            loadPoint.style.marginLeft = -(cS / 2) + 'px';
+            // Collé exactement sous le bras (demi-épaisseur du bras)
+            loadPoint.style.top = (beamPx / 2) + 'px';
+
+            // --- MISE A JOUR SVG (PLAQUE ET LIGNES) ---
+            const pxToSvgX = (val) => (val / W) * 100;
+            let svgPivotX = pxToSvgX(pivotXPx);
+            let plateWidthPx = realW * pxPerMeter;
+            let plateStartPx = pivotXPx - (plateWidthPx / 2);
+            let plateEndPx = pivotXPx + (plateWidthPx / 2);
+            let svgPlateStart = pxToSvgX(plateStartPx);
+            let svgPlateEnd = pxToSvgX(plateEndPx);
+            
+            if(visPlateLine) {
+                visPlateLine.setAttribute('x1', svgPlateStart);
+                visPlateLine.setAttribute('x2', svgPlateEnd);
+                visPivotLine.setAttribute('x1', svgPivotX);
+                visPivotLine.setAttribute('x2', svgPivotX);
+                let svgPivotY = 100 - ((pivotYPx / H) * 100);
+                visPivotLine.setAttribute('y1', svgPivotY);
+                visPivotLine.setAttribute('y2', 100);
+                visDiagL.setAttribute('x1', svgPivotX);
+                visDiagL.setAttribute('y1', svgPivotY);
+                visDiagL.setAttribute('x2', svgPlateStart);
+                visDiagR.setAttribute('x1', svgPivotX);
+                visDiagR.setAttribute('y1', svgPivotY);
+                visDiagR.setAttribute('x2', svgPlateEnd);
+            }
+
+            // --- GRILLE DYNAMIQUE & GRADUATIONS ---
+            let gridStep = 1; 
+            let displayGridSize = pxPerMeter;
+            
+            if (pxPerMeter < 20) { gridStep = 5; displayGridSize = pxPerMeter * 5; } 
+            else if (pxPerMeter < 40) { gridStep = 2; displayGridSize = pxPerMeter * 2; }
+            else if (pxPerMeter > 150) { gridStep = 0.5; displayGridSize = pxPerMeter * 0.5; }
+            
+            gridBg.style.backgroundSize = `${displayGridSize}px ${displayGridSize}px`;
+            // On cale la grille exactement sur le pivot (axe X) et le bas (axe Y)
+            gridBg.style.backgroundPosition = `${pivotXPx - 1}px bottom`;
+
+            // GESTION DES LABELS (AXES X et Y)
+            const gridLabels = document.getElementById('gridLabels');
+            if(gridLabels) {
+                gridLabels.innerHTML = ''; 
+                
+                const styleBase = `position:absolute; font-size:0.9rem; color:rgba(255,255,255,0.4); font-family:'Share Tech Mono'; pointer-events:none;`;
+
+                // 1. AXE Y (HAUTEUR) -> Gauche et Droite de l'écran, SOUS la ligne
+                const numLinesY = Math.floor(H / displayGridSize);
+                for(let i = 1; i <= numLinesY; i++) { 
+                    let yPos = i * displayGridSize; 
+                    let val = (i * gridStep).toFixed(gridStep < 1 ? 1 : 0);
+                    
+                    // Label Gauche
+                    let divL = document.createElement('div');
+                    // transform: translateY(100%) déplace le texte vers le bas de sa propre hauteur -> il se retrouve sous la ligne
+                    divL.style.cssText = `${styleBase} bottom:${yPos}px; left:4px; transform:translateY(100%);`;
+                    divL.innerText = val + "M"; 
+                    gridLabels.appendChild(divL);
+
+                    // Label Droite
+                    let divR = document.createElement('div');
+                    divR.style.cssText = `${styleBase} bottom:${yPos}px; right:4px; text-align:right; transform:translateY(100%);`;
+                    divR.innerText = val + "M"; 
+                    gridLabels.appendChild(divR);
+                }
+
+                // 2. AXE X (DISTANCE) -> Texte à droite de la ligne verticale (inchangé v148)
+                const maxStepsX = Math.ceil(Math.max(pivotXPx, W - pivotXPx) / displayGridSize);
+                
+                for(let j = 1; j <= maxStepsX; j++) {
+                    let xOffset = j * displayGridSize;
+                    let valX = (j * gridStep).toFixed(gridStep < 1 ? 1 : 0);
+
+                    // Graduation Droite (Vers l'avant)
+                    let xR = pivotXPx + xOffset;
+                    if (xR < W - 10) { 
+                        let divX = document.createElement('div');
+                        divX.style.cssText = `${styleBase} bottom:4px; left:${xR + 4}px;`;
+                        divX.innerText = valX + "m";
+                        gridLabels.appendChild(divX);
+                    }
+
+                    // Graduation Gauche (Vers l'arrière)
+                    let xL = pivotXPx - xOffset;
+                    if (xL > 10) {
+                        let divX = document.createElement('div');
+                        divX.style.cssText = `${styleBase} bottom:4px; left:${xL + 4}px;`;
+                        divX.innerText = valX + "m";
+                        gridLabels.appendChild(divX);
+                    }
+                }
+            }
+
+            if(lblSideW && lblSideH && plateSquare) {
+                lblSideW.innerText = realW.toFixed(2) + "m";
+                lblSideH.innerText = realH.toFixed(2) + "m";
+                let aspect = realW / realH; 
+                const MAX_PX = 140; 
+                let newW, newH;
+                if (aspect >= 1) { newW = MAX_PX; newH = MAX_PX / aspect; } 
+                else { newH = MAX_PX; newW = MAX_PX * aspect; }
+                plateSquare.style.width = newW + 'px'; plateSquare.style.height = newH + 'px';
+            }
+            
+            if(outPressure) {
+                outPressure.value = pressure.toFixed(0);
+                
+                // On récupère le panneau gauche pour changer sa couleur
+                const leftPanel = document.querySelector('.shnop-left-panel');
+
+                if (pressure > limitLoad) {
+                    // Styles Texte
+                    outPressure.style.color = "#f87171"; outPressure.style.textShadow = "0 0 10px rgba(248, 113, 113, 0.6)";
+                    outSafeStatus.innerText = "DANGER"; outSafeStatus.style.color = "#f87171"; outSafeStatus.style.textShadow = "0 0 10px rgba(248, 113, 113, 0.6)";
+                    
+                    // Style Cadre : ROUGE
+                    if(leftPanel) {
+                        leftPanel.style.borderColor = "#ef4444";
+                        leftPanel.style.backgroundColor = "rgba(239, 68, 68, 0.05)";
+                        leftPanel.style.boxShadow = "inset 0 0 20px rgba(239, 68, 68, 0.05), 0 0 15px rgba(239, 68, 68, 0.1)";
+                    }
+                } else {
+                    // Styles Texte
+                    outPressure.style.color = "#34d399"; outPressure.style.textShadow = "0 0 10px rgba(52, 211, 153, 0.6)";
+                    outSafeStatus.innerText = "OK"; outSafeStatus.style.color = "#34d399"; outSafeStatus.style.textShadow = "0 0 10px rgba(52, 211, 153, 0.6)";
+                    
+                    // Style Cadre : VERT
+                    if(leftPanel) {
+                        leftPanel.style.borderColor = "#34d399";
+                        leftPanel.style.backgroundColor = "rgba(52, 211, 153, 0.05)";
+                        leftPanel.style.boxShadow = "inset 0 0 20px rgba(52, 211, 153, 0.05), 0 0 15px rgba(52, 211, 153, 0.1)";
+                    }
+                }
+            }
+
+            let nbGueuses = 0;
+            let unitActive = btnUnit.classList.contains('active');
+            if (wUnitVal > 0 && unitActive) {
+                nbGueuses = reqGueuses / wUnitVal;
+                outCount.value = nbGueuses.toFixed(1);
+                outCount.classList.remove('off');
+            } else {
+                outCount.value = "--";
+                outCount.classList.add('off');
+                nbGueuses = 0; 
+            }
+            updateVisuals(dR, dF);
+            
+            const C_GREEN = 'rgba(52, 211, 153, 0.8)';
+            const C_BLUE = 'rgba(96, 165, 250, 0.8)';
+            const C_RED = 'rgba(248, 113, 113, 0.8)';
+            const C_OFF = 'rgba(100, 100, 100, 0.3)';
+
+            function setUIState(btn, slider, input, color) {
+                const isActive = btn.classList.contains('active');
+                const box = slider.parentElement;
+                if(isActive) { box.classList.remove('dimmed'); input.classList.remove('dimmed'); updateSliderFill(slider, color); } 
+                else { box.classList.add('dimmed'); input.classList.add('dimmed'); updateSliderFill(slider, C_OFF); }
+            }
+
+            updateSliderFill(slDistR, C_RED); updateSliderFill(slDistF, C_GREEN); 
+            updateSliderFill(slLimitSol, C_RED); updateSliderFill(slCalage, C_BLUE); 
+
+            setUIState(btnHead, slWHead, inWHead, C_GREEN);
+            setUIState(btnCam, slWCam, inWCam, C_GREEN);
+            setUIState(btnAdd, slWAdd, inWAdd, C_GREEN);
+            setUIState(btnBase, slWBase, inWBase, C_BLUE);
+            setUIState(btnUnit, slUnit, inUnit, C_RED);
+
+            // --- MISE A JOUR DES ETIQUETTES HAUTEUR (Top Tags) ---
+            const infoR = document.getElementById('infoRear');
+            const infoF = document.getElementById('infoFront');
+            
+            if (infoR && infoF) {
+                // Conversion de l'angle actuel en radians
+                // Note: currentRotation est positif quand l'avant descend (sens horaire)
+                const rad = currentRotation * (Math.PI / 180);
+                
+                // 1. Calcul des Hauteurs Physiques (Mètres)
+                // Hauteur Pivot + ou - la composante verticale du bras
+                // Arrière (Gauche) : Monte quand l'angle est positif -> + sin(rad)
+                let hR_val = pivotHeightMeters + (dR * Math.sin(rad));
+                // Avant (Droite) : Descend quand l'angle est positif -> - sin(rad)
+                let hF_val = pivotHeightMeters - (dF * Math.sin(rad));
+                
+                // Affichage (H= X.XX M)
+                infoR.innerText = "H= " + hR_val.toFixed(2) + " M";
+                infoF.innerText = "H= " + hF_val.toFixed(2) + " M";
+                
+                // 2. Calcul des Positions Horizontales (Pixels) pour suivre les objets
+                // On projette la longueur du bras sur l'axe X avec cos(rad)
+                let xOffsetR = (dR * pxPerMeter) * Math.cos(rad);
+                let xOffsetF = (dF * pxPerMeter) * Math.cos(rad);
+                
+                // PivotXPx est le centre. Arrière à gauche (-), Avant à droite (+)
+                infoR.style.left = (pivotXPx - xOffsetR) + 'px';
+                infoF.style.left = (pivotXPx + xOffsetF) + 'px';
+            }
+            if(source) { triggerWobble(source); }
+        }
+
+        function updateUnitFromSlider() { inUnit.value = slUnit.value; calculate('unit'); }
+        function updateSliderFromUnit() { 
+            let val = parseFloat(inUnit.value) || 0;
+            let safeVal = Math.max(parseFloat(slUnit.min), Math.min(parseFloat(slUnit.max), val));
+            slUnit.value = safeVal; calculate('unit'); 
+        }
+
+        function updateVisuals(dR, dF) {}
+
+        function syncSliderFromLed(ledInput, sliderInput, src) {
+            let val = parseFloat(ledInput.value);
+            if (!isNaN(val)) { sliderInput.value = val; calculate(src); }
+        }
+
+        function attachWheelScroll(slider, src) {
+            slider.addEventListener('wheel', (e) => {
+                e.preventDefault(); 
+                const step = parseFloat(slider.step);
+                let newVal = parseFloat(slider.value) + (e.deltaY > 0 ? -1 : 1) * step;
+                newVal = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), newVal));
+                slider.value = newVal;
+                if (slider === slUnit) { slider.value = newVal; updateUnitFromSlider(); } 
+                else { slider.value = newVal; calculate(src); }
+            }, { passive: false });
+        }
+
+        slDistR.addEventListener('input', () => calculate('R'));
+        inDistR_Led.addEventListener('input', () => syncSliderFromLed(inDistR_Led, slDistR, 'R'));
+        attachWheelScroll(slDistR, 'R'); 
+        
+        slUnit.addEventListener('input', updateUnitFromSlider);
+        inUnit.addEventListener('input', updateSliderFromUnit);
+        attachWheelScroll(slUnit, 'unit');
+
+        slDistF.addEventListener('input', () => calculate('F'));
+        inDistF_Led.addEventListener('input', () => syncSliderFromLed(inDistF_Led, slDistF, 'F'));
+        attachWheelScroll(slDistF, 'F'); 
+
+        slCalage.addEventListener('input', () => calculate(null));
+        inCalage.addEventListener('input', () => syncSliderFromLed(inCalage, slCalage, null));
+        attachWheelScroll(slCalage, null);
+
+        slLimitSol.addEventListener('input', () => calculate(null));
+        inLimitSol.addEventListener('input', () => syncSliderFromLed(inLimitSol, slLimitSol, null));
+        attachWheelScroll(slLimitSol, null); 
+        
+        if(slShape) { slShape.addEventListener('input', () => calculate(null)); updateSliderFill(slShape, 'rgba(96, 165, 250, 0.8)'); } 
+        
+        inWCam.addEventListener('input', () => calculate('load'));
+        
+        function toggleBtn(btn) {
+            btn.classList.toggle('active');
+            btn.innerText = btn.classList.contains('active') ? "ON" : "OFF";
+            calculate('load');
+        }
+
+        btnCam.addEventListener('click', () => toggleBtn(btnCam)); 
+        slWCam.addEventListener('input', () => { inWCam.value = slWCam.value; calculate('load'); });
+        inWCam.addEventListener('input', () => { calculate('load'); }); 
+        attachWheelScroll(slWCam, 'load');
+
+        btnAdd.addEventListener('click', () => toggleBtn(btnAdd));
+        slWAdd.addEventListener('input', () => { inWAdd.value = slWAdd.value; calculate('load'); });
+        inWAdd.addEventListener('input', () => { calculate('load'); });
+        attachWheelScroll(slWAdd, 'load');
+
+        btnHead.addEventListener('click', () => toggleBtn(btnHead));
+        slWHead.addEventListener('input', () => { inWHead.value = slWHead.value; calculate('load'); });
+        inWHead.addEventListener('input', () => { calculate('load'); });
+        attachWheelScroll(slWHead, 'load');
+
+        btnBase.addEventListener('click', () => toggleBtn(btnBase));
+        slWBase.addEventListener('input', () => { inWBase.value = slWBase.value; calculate('load'); });
+        inWBase.addEventListener('input', () => { calculate('load'); });
+        attachWheelScroll(slWBase, 'load');
+
+        btnUnit.addEventListener('click', () => toggleBtn(btnUnit)); 
+
+        if (slHeight && inHeight) {
+            slHeight.addEventListener('input', () => { 
+                inHeight.value = parseFloat(slHeight.value).toFixed(2); 
+                updateSliderFill(slHeight, 'rgba(96, 165, 250, 0.8)');
+                calculate(null); 
+            });
+            inHeight.addEventListener('input', () => { 
+                syncSliderFromLed(inHeight, slHeight, null); 
+                updateSliderFill(slHeight, 'rgba(96, 165, 250, 0.8)'); 
+            });
+            attachWheelScroll(slHeight, null);
+            updateSliderFill(slHeight, 'rgba(96, 165, 250, 0.8)');
+        }
+
+        if (slOffset && inOffset) {
+            slOffset.addEventListener('input', () => { 
+                inOffset.value = parseFloat(slOffset.value).toFixed(2); 
+                updateSliderFill(slOffset, 'rgba(52, 211, 153, 0.8)');
+                calculate(null); 
+            });
+            inOffset.addEventListener('input', () => { 
+                syncSliderFromLed(inOffset, slOffset, null); 
+                updateSliderFill(slOffset, 'rgba(52, 211, 153, 0.8)'); 
+            });
+            attachWheelScroll(slOffset, null);
+            updateSliderFill(slOffset, 'rgba(52, 211, 153, 0.8)');
+        }
+
+        // Window resize re-calculate
+        window.addEventListener('resize', () => calculate(null));
+
+        function setTab(idx) {
+            const cMod = document.getElementById('calc-module');
+            const rightPanel = cMod.querySelector('.shnop-right-panel');
+            const resTab1 = document.getElementById('res-tab-1');
+            const resTab2 = document.getElementById('res-tab-2');
+            const ctrlTab1 = document.getElementById('ctrl-tab-1');
+            const ctrlTab2 = document.getElementById('ctrl-tab-2');
+
+            if(cMod) cMod.style.display = 'flex';
+            if(rightPanel) rightPanel.style.visibility = 'visible';
+
+            if (idx === 1) {
+                if(resTab1) resTab1.style.display = 'flex'; if(resTab2) resTab2.style.display = 'none';
+                if(ctrlTab1) ctrlTab1.style.display = 'flex'; if(ctrlTab2) ctrlTab2.style.display = 'none';
+            } else if (idx === 2) {
+                if(resTab1) resTab1.style.display = 'none'; if(resTab2) resTab2.style.display = 'flex';
+                if(ctrlTab1) ctrlTab1.style.display = 'none'; if(ctrlTab2) ctrlTab2.style.display = 'flex';
+            } else {
+                if(resTab1) resTab1.style.display = 'none'; if(resTab2) resTab2.style.display = 'none';
+                if(ctrlTab1) ctrlTab1.style.display = 'none'; if(ctrlTab2) ctrlTab2.style.display = 'none';
+            }
+            document.querySelectorAll('.nav-btn').forEach((btn, i) => { if(i === idx - 1) btn.classList.add('active'); else btn.classList.remove('active'); });
+            document.querySelectorAll('.tab-content').forEach((content, i) => { if(i === idx - 1) content.classList.add('active'); else content.classList.remove('active'); });
+            if(idx === 1) calculate(null);
+        }
+        
+        // Initial Calculation
+        setTimeout(() => calculate(null), 100);
+
+        // Écouteurs pour mise à jour au relâchement des sliders
+        slDistR.addEventListener('change', updateGueuseVisuals);
+        slDistF.addEventListener('change', updateGueuseVisuals);
+        slUnit.addEventListener('change', updateGueuseVisuals);
+        
+        // Mise à jour au clic des boutons (toggle)
+        btnCam.addEventListener('click', updateGueuseVisuals);
+        btnHead.addEventListener('click', updateGueuseVisuals);
+        btnAdd.addEventListener('click', updateGueuseVisuals);
+        btnBase.addEventListener('click', updateGueuseVisuals);
+        btnUnit.addEventListener('click', updateGueuseVisuals);
+
+        // Init
+        setTimeout(updateGueuseVisuals, 200);
+
+    </script>
+</body>
+</html>

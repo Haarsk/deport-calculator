@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>K-CALC PRESTIGE</title>
+    <style>
+        /* --- BASE & FONTS --- */
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; outline: none; }
+        
+        /* --- FOND LIQUIDE ET SOMBRE --- */
+        body {
+            background-color: #000;
+            background: radial-gradient(circle at 50% -20%, #112a25, #000000 70%);
+            color: #e0f2fe;
+            font-family: 'Share Tech Mono', monospace;
+            height: 100vh; width: 100vw; margin: 0;
+            display: flex; justify-content: center; align-items: center; 
+            overflow: hidden; 
+        }
+
+        /* --- INTRO SCREEN (GLASS STYLE) --- */
+        #intro-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(15px);
+            z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer;
+            transition: opacity 0.6s ease-out;
+        }
+        .intro-title {
+            color: #0ff; /* Cyan Néon */
+            font-size: 1.8rem; font-weight: bold; text-transform: uppercase;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.8); 
+            margin-bottom: 20px; text-align: center; padding: 0 20px;
+        }
+        .intro-sub {
+            color: rgba(255,255,255,0.7); font-size: 1.2rem; letter-spacing: 2px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; text-shadow: 0 0 10px #0ff; } 100% { opacity: 0.5; } }
+
+        /* --- CADRE "LIQUID GLASS" --- */
+        .phone-frame {
+            aspect-ratio: 9 / 16; height: 95vh; max-width: 95vw;
+            /* Le fameux effet verre */
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.5); /* Reflet haut */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            box-shadow: 
+                0 0 30px rgba(0, 255, 255, 0.05), /* Lueur interne */
+                0 20px 50px rgba(0, 0, 0, 0.8);   /* Ombre portée */
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            
+            display: flex; flex-direction: column; padding: 15px; position: relative; overflow: hidden;
+        }
+
+        /* Effet de brillance qui traverse l'écran */
+        .phone-frame::before {
+            content: ''; position: absolute; top: 0; left: -50%; width: 200%; height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.03), transparent);
+            transform: rotate(25deg); pointer-events: none;
+        }
+
+        /* --- HEADER --- */
+        .app-header { 
+            display: flex; flex-direction: row; align-items: center; justify-content: space-between;
+            width: 100%; padding: 0 5px 10px 5px; margin-bottom: 5px; flex-shrink: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1); 
+        }
+        
+        .header-titles {
+            display: flex; flex-direction: column; align-items: flex-start;
+            text-align: left; min-width: 0; flex: 1; 
+        }
+
+        .title-main { 
+            color: #0ff; /* Cyan */
+            font-size: 1.1rem; font-weight: bold; 
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5); 
+            letter-spacing: 1px; text-transform: uppercase; line-height: 1.2;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;
+        }
+        .title-sub { 
+            color: rgba(255,255,255,0.5); font-size: 0.75rem; margin-top: 2px; 
+            letter-spacing: 2px; font-style: italic; line-height: 1.2;
+        }
+
+        /* BOUTON PLEIN ÉCRAN (Style pilule verre) */
+        .fs-btn {
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            color: #0ff;
+            padding: 6px 12px; border-radius: 20px; cursor: pointer;
+            font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; 
+            letter-spacing: 1px; text-transform: uppercase;
+            transition: all 0.3s ease;
+            display: flex; align-items: center; justify-content: center;
+            white-space: nowrap; height: auto; margin-left: 10px; flex-shrink: 0;
+            backdrop-filter: blur(4px);
+        }
+        .fs-btn:hover { 
+            background: rgba(0, 255, 255, 0.2); 
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+            border-color: #0ff; color: #fff;
+        }
+
+        /* --- VISUALISATION (Haut) --- */
+        .screen-bezel {
+            flex: 0 0 28%;
+            background: rgba(0, 0, 0, 0.4); /* Sombre mais transparent */
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            position: relative; margin-bottom: 12px;
+            overflow: hidden; display: flex; justify-content: center; align-items: flex-end;
+            min-height: 0;
+            backdrop-filter: blur(5px);
+        }
+        
+        .grid-bg {
+            position: absolute; width:100%; height:100%;
+            background-image: linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px), 
+                              linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* --- GRUE (Style Néon) --- */
+        .pivot-container { 
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 50%; 
+            z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+            pointer-events: none; opacity: 0.8;
+        }
+        .pivot-container svg path { fill: rgba(255,255,255,0.1); stroke: rgba(255,255,255,0.3); } 
+        
+        .anchor { 
+            position: absolute; bottom: 50%; left: 50%; z-index: 10;
+            transform-origin: bottom center; transform: translateX(-50%);
+            /* Transition fluide */
+            transition: transform 0.1s linear; 
+        }
+
+        .beam { height: 6px; position: absolute; top: -3px; display: flex; align-items: center; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); }
+        
+        /* Blocs néons */
+        .b-rear { right: 0; border-radius: 2px 0 0 2px; box-shadow: 0 0 10px rgba(255, 50, 50, 0.6); background: rgba(255, 50, 50, 0.4); }
+        .b-front { left: 0; border-radius: 0 2px 2px 0; box-shadow: 0 0 10px rgba(50, 255, 100, 0.6); background: rgba(50, 255, 100, 0.4); }
+        
+        /* ELEMENTS TACTILES */
+        .rear-block {
+            position: absolute; left: 0; bottom: 0; width: 20px; height: 25px;
+            background: rgba(255, 50, 50, 0.8); box-shadow: 0 0 15px rgba(255, 0, 0, 0.8); border-radius: 4px;
+            transform: translateX(-50%); z-index: 12; border: 1px solid #fff;
+            cursor: ew-resize; touch-action: none; /* Curseur redimensionnement horizontal */
+        }
+        
+        /* POINT VERT : 50% PLUS GROS (22px) */
+        .load-point {
+            position: absolute; right: 0; bottom: -11px;
+            width: 22px; height: 22px;
+            background: #0ff; border-radius: 50%; box-shadow: 0 0 10px #0ff;
+            z-index: 15; transform: translateX(50%); border: 2px solid #fff;
+            cursor: ew-resize; touch-action: none; /* Curseur redimensionnement horizontal */
+        }
+        
+        .rear-block:active, .load-point:active { cursor: grabbing; transform: translateX(-50%) scale(1.1); transition: transform 0.1s; }
+
+        /* Wobble SIMPLE et PUISSANT (Une seule oscillation) */
+        /* 0 -> Kick (fort) -> Retour -> 0 */
+        @keyframes kick-sway { 
+            0% { transform: translateX(-50%) rotate(0deg); } 
+            25% { transform: translateX(-50%) rotate(-3.5deg); } /* Kick Gauche FORT */
+            60% { transform: translateX(-50%) rotate(1.5deg); }  /* Rebond Droite atténué */
+            100% { transform: translateX(-50%) rotate(0deg); } 
+        }
+        @keyframes kick-sway-inv { 
+            0% { transform: translateX(-50%) rotate(0deg); } 
+            25% { transform: translateX(-50%) rotate(3.5deg); }  /* Kick Droite FORT */
+            60% { transform: translateX(-50%) rotate(-1.5deg); } /* Rebond Gauche atténué */
+            100% { transform: translateX(-50%) rotate(0deg); } 
+        }
+        
+        .wobble-active { animation: kick-sway 0.6s cubic-bezier(0.25, 1, 0.5, 1); } 
+        .wobble-left { animation: kick-sway 0.6s cubic-bezier(0.25, 1, 0.5, 1); } 
+        .wobble-right { animation: kick-sway-inv 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
+
+        /* --- CONTRÔLES (Glass Modules) --- */
+        .control-deck { 
+            flex: 1; display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; 
+            padding-top: 2px; overflow-y: auto; overflow-x: hidden;
+            /* Scrollbar invisible mais fonctionnelle */
+            scrollbar-width: none; 
+        }
+        .control-deck::-webkit-scrollbar { display: none; }
+
+        .module {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px; padding: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+            display: flex; flex-direction: column; flex: 1; justify-content: center; gap: 8px; width: 100%;
+            backdrop-filter: blur(8px);
+            transition: transform 0.2s;
+        }
+        
+        .mod-header { 
+            font-size: 0.75rem; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 2px; 
+            text-align: center; margin-bottom: 5px; font-weight: bold; flex-shrink: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px;
+        }
+
+        /* Layouts */
+        .split-row { display: flex; flex-direction: column; gap: 12px; width: 100%; height: auto; }
+        .half-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-start; width: 100%; min-width: 0; }
+        .half-col:nth-child(2) { order: -1; } /* Inversion conservée */
+
+        /* --- INPUTS GLOWING (Style HUD) --- */
+        .led-input {
+            background: rgba(0,0,0,0.3); 
+            border: none; border-bottom: 2px solid rgba(255,255,255,0.1);
+            color: #fff;
+            font-family: 'Share Tech Mono', monospace; text-align: center;
+            width: 100%; outline: none; border-radius: 4px;
+            text-shadow: 0 0 5px currentColor;
+            transition: all 0.3s; padding: 0;
+        }
+        .led-input:focus { 
+            background: rgba(0,0,0,0.5); 
+            border-bottom-color: currentColor; 
+            box-shadow: 0 10px 20px -10px currentColor; 
+        }
+        
+        /* Couleurs Néon Spécifiques */
+        .text-orange { color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.6); }
+        .text-green { color: #34d399; text-shadow: 0 0 10px rgba(52, 211, 153, 0.6); }
+        .text-red { color: #f87171; text-shadow: 0 0 10px rgba(248, 113, 113, 0.6); }
+        .text-blue { color: #60a5fa; text-shadow: 0 0 10px rgba(96, 165, 250, 0.6); }
+        .text-silver { color: #e5e7eb; text-shadow: 0 0 10px rgba(229, 231, 235, 0.4); }
+
+        /* --- NOUVELLE STRUCTURE MODULAIRE (Le Salon de la Comtesse) --- */
+        .shnop-layout { display: flex; flex-direction: row; gap: 15px; height: 100%; min-height: 0; flex: 1; }
+        
+        /* Côté Gauche : Le Trône du Résultat */
+        .shnop-left-panel {
+            flex: 1; 
+            background: rgba(251, 191, 36, 0.05);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 12px;
+            display: flex; flex-direction: column; justify-content: space-evenly; align-items: center;
+            padding: 10px;
+            box-shadow: inset 0 0 20px rgba(251, 191, 36, 0.05);
+        }
+
+        /* Côté Droit : Les Leviers de Commande */
+        .shnop-right-panel {
+            flex: 1;
+            display: flex; flex-direction: column; 
+            justify-content: space-between; /* Répartition verticale */
+            gap: 5px;
+        }
+
+        /* Styles spécifiques aux textes */
+        .led-label { font-size: 0.8rem; color: rgba(255,255,255,0.5); text-align: center; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* Le Grand Chiffre (Poids Requis) - REDUIT DE 20% ENCORE (2.9) */
+        .big-result { 
+            font-size: 2.9rem; 
+            line-height: 1; font-weight: bold; 
+            text-shadow: 0 0 20px rgba(251, 191, 36, 0.6); margin: 10px 0;
+            background: transparent; border: none;
+        }
+        
+        /* Les sous-résultats (Total & Gueuses) */
+        .sub-result-row { width: 100%; display: flex; flex-direction: column; gap: 5px; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; margin-top: 5px; }
+        .sub-res-val { font-size: 1.5rem; font-weight: bold; background: transparent; border: none; }
+        
+        /* Inputs standards à droite */
+        .std-input { 
+            font-size: 1.4rem; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.2); 
+            border-radius: 4px; padding: 2px; transition: all 0.3s;
+        }
+        .std-input:focus { background: rgba(0,0,0,0.5); border-color: #fff; }
+
+        /* Gardien du style standard pour le haut */
+        .standard-led { font-size: 1.8rem; height: 42px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+
+        /* SLIDERS (Barre de verre) */
+        .slider-box {
+            position: relative; height: 4px; width: 100%;
+            background: rgba(255,255,255,0.1); border-radius: 4px; 
+            display: flex; align-items: center; margin-bottom: 5px; flex-shrink: 0;
+        }
+        #slDistR { direction: rtl; }
+        
+        /* Le Slider Unité "Demi-portion" collé à droite */
+        .half-slider-container {
+            display: flex; justify-content: flex-end; width: 100%;
+        }
+        .half-slider-box { width: 50% !important; }
+
+        input[type=range] {
+            -webkit-appearance: none; width: 100%; height: 100%; 
+            background: transparent; cursor: pointer; z-index: 50; touch-action: none;
+        }
+        /* Thumb invisible mais présent pour le touch */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 20px; width: 20px;
+            background: #fff; border-radius: 50%; 
+            box-shadow: 0 0 10px #fff; opacity: 0; 
+        }
+
+        /* Layout lignes */
+        .led-row { display: flex; align-items: center; width: 100%; margin-bottom: 2px; }
+        .led-row input { width: 50%; margin: 0; }
+        .led-row .led-label { width: 50%; margin: 0; font-size: 0.8rem; line-height: 1.1; }
+        .front-layout { flex-direction: row; }
+        .front-layout .led-label { text-align: right; padding-right: 10px; }
+        .rear-layout .led-label { order: 2; text-align: left; padding-left: 10px; }
+        .rear-layout input { order: 1; }
+
+       /* BOUTON TOGGLE (Style Shnop-Néon) */
+        .chk-overlay {
+            position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
+            z-index: 5;
+        }
+        .toggle-btn {
+            background: rgba(0,0,0,0.6); 
+            border: 1px solid rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.3);
+            padding: 4px 8px; border-radius: 8px; cursor: pointer;
+            font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase; letter-spacing: 1px; min-width: 40px;
+            backdrop-filter: blur(4px); text-align: center;
+        }
+        .toggle-btn:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+        
+        /* État ACTIF (Allumé) */
+        .toggle-btn.active {
+            background: rgba(52, 211, 153, 0.15); 
+            border-color: #34d399; color: #fff;
+            box-shadow: 0 0 12px rgba(52, 211, 153, 0.4);
+            text-shadow: 0 0 8px #34d399;
+            font-weight: bold;
+        }
+
+        /* --- FOOTER COMPTEUR --- */
+        .footer-counter {
+            flex: 0 0 auto; width: 100%; padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+            font-size: 0.75rem; color: rgba(255,255,255,0.4);
+            background: rgba(0,0,0,0.2); margin-top: 5px; border-radius: 0 0 16px 16px;
+        }
+        .counter-val {
+            font-family: 'Share Tech Mono', monospace;
+            color: #0ff; text-shadow: 0 0 5px #0ff;
+            background: rgba(0,0,0,0.5); padding: 2px 6px;
+            border: 1px solid rgba(0, 255, 255, 0.3); border-radius: 4px;
+            letter-spacing: 2px;
+        }
+
+        /* --- MEDIA QUERY MOBILE --- */
+        @media (max-width: 768px) {
+            .phone-frame {
+                width: 100vw; height: 100vh; max-width: none; aspect-ratio: unset;
+                border: none; border-radius: 0; box-shadow: none; padding: 4px;
+                background: radial-gradient(circle at 50% 20%, #0d1f22, #000);
+            }
+            body { background: #000; }
+            .screen-bezel { flex: 1 1 0% !important; margin-bottom: 2px !important; border-radius: 0 0 12px 12px; }
+            .control-deck { flex: 0 0 auto !important; overflow-y: visible !important; gap: 8px; padding-bottom: 5px !important; }
+            
+            .module-red .monolith-led { font-size: 3.5rem !important; padding-top: 0 !important; line-height: 1 !important; } 
+            .module-red .led-label { font-size: 0.7rem !important; } 
+            .module-red .standard-led, .module-red .big-led { font-size: 1.0rem !important; height: 30px !important; }
+            .standard-led { font-size: 1.3rem !important; height: 35px !important; }
+            
+            /* SLIDERS MOBILE RÉDUIT */
+            .slider-box { height: 15px !important; margin-bottom: 4px !important; border-radius: 8px !important; }
+            
+            /* Bouton actif sur mobile */
+            .fs-btn { 
+                background: rgba(0, 255, 255, 0.2) !important; color: #fff !important; 
+                border-color: #0ff !important; box-shadow: 0 0 10px rgba(0,255,255,0.4);
+            }
+            .title-main { font-size: 0.8rem !important; white-space: nowrap; }
+            .title-sub { font-size: 0.6rem !important; }
+            .footer-counter { padding-bottom: 20px; border-radius: 0; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="intro-screen">
+        <div class="intro-title">Shnop Glass Interface</div>
+        <div class="intro-sub">Initialisation du système...</div>
+    </div>
+
+    <div class="phone-frame">
+        
+        <div class="app-header">
+            <div class="header-titles">
+                <div class="title-main">Rossignol Grip Vibe Coding</div>
+                <div class="title-sub">Calculateur de déport V1.0 Beta</div>
+            </div>
+            <button id="fsBtn" class="fs-btn" title="Plein Écran">PLEIN ÉCRAN</button>
+        </div>
+
+        <div class="screen-bezel">
+            <div class="grid-bg"></div>
+            <div class="anchor">
+                <div class="beam b-rear" id="visBeamR" style="width: 50px;"><div class="rear-block"></div></div>
+                <div class="beam b-front" id="visBeamF" style="width: 80px;">
+                    <div class="load-point"></div>
+                </div>
+            </div>
+            <div class="pivot-container">
+                <svg viewBox="0 0 100 80" preserveAspectRatio="xMidYMax" style="width: auto; height: 100%;">
+                    <path d="M50 0 L90 80 L10 80 Z" />
+                    <path d="M50 15 L70 75 L30 75 Z" fill="rgba(255,255,255,0.2)" />
+                    <circle cx="50" cy="5" r="4" fill="#f87171"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="control-deck">
+
+            <div class="module">
+                <div class="mod-header">CONFIGURATIONS GÉOMÉTRIQUES</div>
+                <div class="split-row">
+                    <div class="half-col">
+                        <div class="led-row rear-layout">
+                            <div class="led-label">DIST. ARRIÈRE (M)</div>
+                            <input type="number" id="inDistR_Led" class="led-input standard-led text-red" value="2.00" inputmode="decimal">
+                        </div>
+                        <div class="slider-box" id="sbDistR">
+                            <input type="range" id="slDistR" min="0.5" max="10" step="0.1" value="2.0">
+                        </div>
+                    </div>
+                    
+                    <div class="half-col">
+                        <div class="led-row front-layout">
+                            <div class="led-label">DIST. AVANT (M)</div>
+                            <input type="number" id="inDistF_Led" class="led-input standard-led text-green" value="3.00" inputmode="decimal">
+                        </div>
+                        <div class="slider-box" id="sbDistF">
+                            <input type="range" id="slDistF" min="0.5" max="10" step="0.1" value="3.0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="module module-red" style="flex: 2; display: flex; flex-direction: column;">
+                <div class="mod-header" style="color:#f87171;">CALCULATEUR DE CHARGE</div>
+                
+                <div class="shnop-layout">
+                    <div class="shnop-left-panel">
+                        <div style="flex:1; display:flex; flex-direction:column; justify-content:center; width:100%;">
+                            <div class="led-label" style="color: #fbbf24;">POIDS REQUIS (KG)</div>
+                            <input type="number" id="outTotal" class="led-input big-result text-orange" value="0" readonly>
+                        </div>
+
+                        <div class="sub-result-row">
+                            <div style="width:100%;">
+                                <div class="led-label" style="color:rgba(251, 191, 36, 0.7);">POIDS TOTAL (KG)</div>
+                                <input type="number" id="outRealTotal" class="led-input sub-res-val text-orange" value="0" readonly>
+                            </div>
+                            <div style="width:100%; margin-top: 5px;">
+                                <div class="led-label" style="color:rgba(251, 191, 36, 0.7);">NBRE GUEUSES</div>
+                                <input type="text" id="outCount" class="led-input sub-res-val text-orange" value="--" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="shnop-right-panel">
+                        <div>
+                            <div class="led-label">TÊTE / PROJ (KG)</div>
+                            <div style="position:relative; width:100%;">
+                                <input type="number" id="inWHead" class="led-input std-input text-red" value="10" inputmode="decimal">
+                                <div class="chk-overlay"><button id="btnHead" class="toggle-btn">OFF</button></div>
+                            </div>
+                            <div class="slider-box" id="sbWHead" style="margin-top: 3px;">
+                                <input type="range" id="slWHead" min="0" max="50" step="1" value="10">
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="led-label">CAMÉRA (KG)</div>
+                            <div style="position:relative; width:100%;">
+                                <input type="number" id="inWCam" class="led-input std-input text-red" value="30" inputmode="decimal">
+                                <div class="chk-overlay"><button id="btnCam" class="toggle-btn active">ON</button></div>
+                            </div>
+                            <div class="slider-box" id="sbWCam" style="margin-top: 3px;">
+                                <input type="range" id="slWCam" min="0" max="50" step="1" value="30">
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="led-label" style="color:#60a5fa;">POIDS 1 GUEUSE (KG)</div>
+                            <input type="number" id="inUnit" class="led-input std-input text-blue" value="10" inputmode="decimal">
+                            <div class="slider-box" id="sbUnit" style="margin-top: 3px;">
+                                <input type="range" id="slUnit" min="1" max="50" step="0.5" value="10">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="footer-counter">
+            <span class="counter-label">VISITES</span>
+            <span class="counter-val" id="visitCount">000000</span>
+        </div>
+
+    </div>
+
+    <script>
+        const intro = document.getElementById('intro-screen');
+        intro.addEventListener('click', () => {
+            intro.style.opacity = '0';
+            setTimeout(() => { intro.style.display = 'none'; }, 600);
+            try {
+                const isMobile = window.innerWidth <= 768;
+                if (isMobile) {
+                    const elem = document.documentElement;
+                    if (elem.requestFullscreen) elem.requestFullscreen().catch(() => {});
+                    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+                }
+            } catch (e) { console.log("Erreur plein écran ignorée"); }
+        });
+
+        const fsBtn = document.getElementById('fsBtn');
+        fsBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {});
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        });
+
+        // --- COMPTEUR VISITE CORRIGE ---
+        const counterEl = document.getElementById('visitCount');
+        let visits = localStorage.getItem('kcalc_v1_visits') || 0; 
+        visits++;
+        localStorage.setItem('kcalc_v1_visits', visits);
+        counterEl.innerText = visits.toString().padStart(6, '0');
+
+        const PX_M = 20;
+        const outTotal = document.getElementById('outTotal');
+        const outRealTotal = document.getElementById('outRealTotal'); // Nouveau
+        const outCount = document.getElementById('outCount');
+        const inUnit = document.getElementById('inUnit');
+        const slUnit = document.getElementById('slUnit');
+        const inDistR_Led = document.getElementById('inDistR_Led');
+        const slDistR = document.getElementById('slDistR');
+        const inDistF_Led = document.getElementById('inDistF_Led');
+        const slDistF = document.getElementById('slDistF');
+        
+        const inWHead = document.getElementById('inWHead');
+        const btnHead = document.getElementById('btnHead');
+        const slWHead = document.getElementById('slWHead'); 
+
+        const inWCam = document.getElementById('inWCam');
+        const btnCam = document.getElementById('btnCam');
+        const slWCam = document.getElementById('slWCam'); 
+
+        const visBeamR = document.getElementById('visBeamR');
+        const visBeamF = document.getElementById('visBeamF');
+        const screenBox = document.querySelector('.screen-bezel');
+        const anchor = document.querySelector('.anchor');
+
+        // ELEMENTS TACTILES
+        const rearBlock = document.querySelector('.rear-block');
+        const loadPoint = document.querySelector('.load-point');
+
+        let prevDistR = parseFloat(slDistR.value);
+        let prevDistF = parseFloat(slDistF.value);
+
+        // MODIF SLIDER STYLE : On change le background du container parent
+        function updateSliderFill(slider, color) {
+            const val = parseFloat(slider.value);
+            const min = parseFloat(slider.min);
+            const max = parseFloat(slider.max);
+            const percent = ((val - min) / (max - min)) * 100;
+            const direction = slider.id === 'slDistR' ? 'to left' : 'to right';
+            // On applique le style au parent .slider-box
+            slider.parentElement.style.background = `linear-gradient(${direction}, ${color} 0%, ${color} ${percent}%, rgba(255,255,255,0.1) ${percent}%, rgba(255,255,255,0.1) 100%)`;
+            // Et un petit box-shadow pour le glow
+            slider.parentElement.style.boxShadow = `0 0 10px ${color}40`; 
+        }
+
+        function triggerWobble(source) {
+            anchor.classList.remove('wobble-active', 'wobble-left', 'wobble-right');
+            void anchor.offsetWidth; 
+
+            // Si on touche un élément, l'oscillation est directionnelle (kick)
+            if (source === 'R') {
+                anchor.classList.add('wobble-left'); // Coup à gauche
+            } else if (source === 'F') {
+                anchor.classList.add('wobble-right'); // Coup à droite
+            } else {
+                anchor.classList.add('wobble-active'); // Coup standard
+            }
+        }
+
+        // --- GESTION DU TACTILE / DRAG (RETRACTER / SORTIR) ---
+        let isDragging = false;
+        let startX = 0;
+        let dragTarget = null;
+
+        function handleDragStart(e) {
+            isDragging = true;
+            dragTarget = e.currentTarget;
+            startX = e.touches ? e.touches[0].clientX : e.clientX;
+            // Stop animation si en cours
+            anchor.classList.remove('wobble-active', 'wobble-left', 'wobble-right');
+        }
+
+        function handleDragMove(e) {
+            if (!isDragging || !dragTarget) return;
+            const currentX = e.touches ? e.touches[0].clientX : e.clientX;
+            
+            // Calculer la distance depuis le centre de la zone
+            const rect = screenBox.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            
+            // Calcul de la distance en pixels par rapport au centre
+            let distPixels = 0;
+            let targetSlider = null;
+            let src = '';
+
+            if (dragTarget === rearBlock) {
+                // Coté gauche (Rouge) : on calcule la distance à gauche du centre
+                // Si la souris est à gauche du centre, distance positive.
+                distPixels = centerX - currentX;
+                targetSlider = slDistR;
+                src = 'R';
+            } else if (dragTarget === loadPoint) {
+                // Coté droit (Vert) : on calcule la distance à droite du centre
+                distPixels = currentX - centerX;
+                targetSlider = slDistF;
+                src = 'F';
+            }
+
+            if (targetSlider) {
+                // Conversion Pixels -> Mètres
+                let distM = distPixels / PX_M;
+                // Bornage (Clamp)
+                distM = Math.max(parseFloat(targetSlider.min), Math.min(parseFloat(targetSlider.max), distM));
+                
+                // Mise à jour de la valeur
+                targetSlider.value = distM;
+                // Recalcul immédiat
+                calculate(null); // null pour ne pas trigger le wobble pendant le drag
+            }
+        }
+
+        function handleDragEnd() {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            // Trigger oscillation unique au relachement
+            let src = (dragTarget === rearBlock) ? 'R' : 'F';
+            triggerWobble(src);
+            
+            dragTarget = null;
+        }
+
+        // Listeners pour Souris
+        rearBlock.addEventListener('mousedown', handleDragStart);
+        loadPoint.addEventListener('mousedown', handleDragStart);
+        document.addEventListener('mousemove', handleDragMove);
+        document.addEventListener('mouseup', handleDragEnd);
+
+        // Listeners pour Touch
+        rearBlock.addEventListener('touchstart', handleDragStart, {passive: false});
+        loadPoint.addEventListener('touchstart', handleDragStart, {passive: false});
+        document.addEventListener('touchmove', handleDragMove, {passive: false});
+        document.addEventListener('touchend', handleDragEnd);
+
+
+        function calculate(source = null) {
+            let dR = parseFloat(slDistR.value);
+            let dF = parseFloat(slDistF.value);
+            
+            if (document.activeElement !== inDistR_Led) inDistR_Led.value = dR.toFixed(2);
+            if (document.activeElement !== inDistF_Led) inDistF_Led.value = dF.toFixed(2);
+
+            // Sync Sliders Poids si on ne les touche pas
+            if (document.activeElement !== slWHead) slWHead.value = parseFloat(inWHead.value) || 0;
+            if (document.activeElement !== slWCam) slWCam.value = parseFloat(inWCam.value) || 0;
+
+            let wUnitVal = parseFloat(inUnit.value) || 0;
+            if (document.activeElement !== slUnit) {
+                let safeVal = Math.max(1, Math.min(50, wUnitVal));
+                slUnit.value = safeVal;
+            } else {
+                inUnit.value = slUnit.value;
+                wUnitVal = parseFloat(slUnit.value);
+            }
+
+            let wCam = parseFloat(inWCam.value) || 0;
+            let wHead = parseFloat(inWHead.value) || 0;
+            
+            let camActive = btnCam.classList.contains('active') ? wCam : 0;
+            let headActive = btnHead.classList.contains('active') ? wHead : 0;
+            let totalLoad = camActive + headActive;
+
+            // Mise à jour de l'afficheur Poids Total
+            outRealTotal.value = totalLoad.toFixed(1);
+
+            let reqGueuses = dR > 0 ? (totalLoad * dF) / dR : 0;
+
+            outTotal.value = reqGueuses.toFixed(2);
+            if (wUnitVal > 0) {
+                outCount.value = (reqGueuses / wUnitVal).toFixed(1);
+                outCount.classList.remove('off');
+            } else {
+                outCount.value = "--";
+                outCount.classList.add('off');
+            }
+
+            updateVisuals(dR, dF);
+            // Couleurs Néon pour les sliders
+            updateSliderFill(slDistR, 'rgba(248, 113, 113, 0.8)'); // Rouge
+            updateSliderFill(slDistF, 'rgba(52, 211, 153, 0.8)'); // Vert
+            updateSliderFill(slUnit, 'rgba(96, 165, 250, 0.8)');  // Bleu
+            updateSliderFill(slWHead, 'rgba(248, 113, 113, 0.8)'); // Rouge Head
+            updateSliderFill(slWCam, 'rgba(248, 113, 113, 0.8)');  // Rouge Cam
+
+            if(source) { triggerWobble(source); }
+        }
+
+        function updateUnitFromSlider() { inUnit.value = slUnit.value; calculate('unit'); }
+        function updateSliderFromUnit() { 
+            let val = parseFloat(inUnit.value) || 0;
+            let safeVal = Math.max(parseFloat(slUnit.min), Math.min(parseFloat(slUnit.max), val));
+            slUnit.value = safeVal;
+            calculate('unit'); 
+        }
+
+        function updateVisuals(dR, dF) {
+            let wR = dR * PX_M; let wF = dF * PX_M;
+            const maxW = (screenBox.offsetWidth / 2) - 20;
+            // On enlève le ratio dynamique pour que le drag soit cohérent visuellement 1px = 1 unit
+            // ou alors on garde le ratio mais le drag doit suivre. Ici on simplifie pour le tactile.
+            // Pour K-Calc, on garde le PX_M fixe pour que le drag suive la souris exactement.
+            
+            visBeamR.style.width = wR + 'px';
+            visBeamF.style.width = wF + 'px';
+        }
+
+        function syncSliderFromLed(ledInput, sliderInput, src) {
+            let val = parseFloat(ledInput.value);
+            if (!isNaN(val)) {
+                sliderInput.value = val;
+                calculate(src);
+            }
+        }
+
+        function attachWheelScroll(slider, src) {
+            slider.addEventListener('wheel', (e) => {
+                e.preventDefault(); 
+                const step = parseFloat(slider.step);
+                let newVal = parseFloat(slider.value) + (e.deltaY > 0 ? -1 : 1) * step;
+                newVal = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), newVal));
+                slider.value = newVal;
+                if (slider === slUnit) {
+                    slider.value = newVal;
+                    updateUnitFromSlider();
+                } else {
+                    slider.value = newVal;
+                    calculate(src);
+                }
+            }, { passive: false });
+        }
+
+        slDistR.addEventListener('input', () => calculate('R'));
+        inDistR_Led.addEventListener('input', () => syncSliderFromLed(inDistR_Led, slDistR, 'R'));
+        attachWheelScroll(slDistR, 'R'); 
+        
+        slUnit.addEventListener('input', updateUnitFromSlider);
+        inUnit.addEventListener('input', updateSliderFromUnit);
+        attachWheelScroll(slUnit, 'unit');
+
+        slDistF.addEventListener('input', () => calculate('F'));
+        inDistF_Led.addEventListener('input', () => syncSliderFromLed(inDistF_Led, slDistF, 'F'));
+        attachWheelScroll(slDistF, 'F'); 
+        
+        inWCam.addEventListener('input', () => calculate('load'));
+        
+        // Fonction utilitaire pour basculer les boutons
+        function toggleBtn(btn) {
+            btn.classList.toggle('active');
+            btn.innerText = btn.classList.contains('active') ? "ON" : "OFF";
+            calculate('load');
+        }
+
+        btnCam.addEventListener('click', () => toggleBtn(btnCam)); 
+        
+        // Logique Slider Caméra
+        slWCam.addEventListener('input', () => { inWCam.value = slWCam.value; calculate('load'); });
+        inWCam.addEventListener('input', () => { calculate('load'); }); 
+        attachWheelScroll(slWCam, 'load');
+
+        btnHead.addEventListener('click', () => toggleBtn(btnHead));
+        
+        // Logique Slider Tête
+        slWHead.addEventListener('input', () => { inWHead.value = slWHead.value; calculate('load'); });
+        inWHead.addEventListener('input', () => { calculate('load'); });
+        attachWheelScroll(slWHead, 'load');
+
+        new ResizeObserver(() => calculate(null)).observe(screenBox);
+        calculate(null);
+    </script>
+</body>
+</html>
