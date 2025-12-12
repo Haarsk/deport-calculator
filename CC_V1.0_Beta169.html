@@ -307,6 +307,15 @@
             letter-spacing: 2px; font-weight: bold;
             background: rgba(0,0,0,0.7); border-radius: 0 0 24px 24px; z-index: 1000;
         }
+    
+    /* Animation Clignotement Rouge pour le bouton SOL */
+        @keyframes dangerPulse {
+            0% { border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+            50% { border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.8); color: #ef4444; }
+            100% { border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .btn-danger-alert { animation: dangerPulse 1s infinite !important; }
+    
     </style>
 </head>
 <body>
@@ -358,7 +367,7 @@
                 
                 <div class="nav-bar">
                     <button class="nav-btn active" onclick="setTab(1)">CONFIG</button>
-                    <button class="nav-btn" onclick="setTab(2)">SOL</button>
+                    <button id="btnNavSol" class="nav-btn" onclick="setTab(2)">SOL</button>
                     <button class="nav-btn" onclick="setTab(3)">HAUTEUR</button>
                 </div>
 
@@ -569,24 +578,39 @@
                                 </div>
                             </div>
                             <div id="res-tab-3-right" style="width:100%; height:100%; display:none; flex-direction:column; justify-content:space-evenly; align-items:center;">
+    
                                 <div style="flex:1; display:flex; flex-direction:column; justify-content:center; width:100%; border-bottom:1px solid rgba(255,255,255,0.1);">
                                     <div class="led-label" style="color: #fbbf24;">HAUTEUR MAX<br>DÉPORT AVANT (M)</div>
                                     <input type="number" id="outLimitFrontH" class="led-input big-result text-orange" style="font-size: 1.8rem; margin:0; opacity:0.8;" value="0.00" readonly>
                                     <div class="led-label" style="color:rgba(251, 191, 36, 0.7); font-size: 0.55rem; margin-top:-2px;">(HAUT DU CONTOUR)</div>
                                 </div>
+
                                 <div style="flex:1; display:flex; flex-direction:column; justify-content:center; width:100%; border-bottom:1px solid rgba(255,255,255,0.1);">
-                                    <div class="led-label" style="color: #34d399;">HAUTEUR ACTUELLE</div>
+                                    <div class="led-label" style="color: #fbbf24;">HAUT. MAX<br>AXE OPT. / POINT CHAUD (M)</div>
+                                    <input type="number" id="outLimitOpticalH" class="led-input big-result text-orange" style="font-size: 1.8rem; margin:0; opacity:0.8;" value="0.00" readonly>
+                                    
+                                    <div style="display: flex; flex-direction: row; align-items: baseline; justify-content: center; gap: 8px; margin-top: -5px;">
+                                        <div class="led-label" style="color:rgba(251, 191, 36, 0.7); font-size: 0.6rem;">DISTANCE PIVOT (M)</div>
+                                        <input type="number" id="outReachOpt" class="led-input text-orange" style="font-size: 1.1rem; width: 60px; height: auto; padding:0; border:none; background:transparent; font-weight:bold;" value="0.00" readonly>
+                                    </div>
+                                </div>
+
+                                <div style="flex:1; display:flex; flex-direction:column; justify-content:center; width:100%; border-bottom:1px solid rgba(255,255,255,0.1);">
+                                    <div class="led-label" style="color: #34d399;">HAUTEUR ACTUELLE (M)</div>
                                     <input type="number" id="outMaxFrontH" class="led-input big-result text-green" style="font-size: 1.8rem; margin:0;" value="0.00" readonly>
                                     <div class="led-label" style="color:rgba(52, 211, 153, 0.7); font-size: 0.55rem; margin-top:-2px;">(HAUT DU CONTOUR)</div>
                                 </div>
-                                <div style="flex:1; display:flex; flex-direction:column; justify-content:center; width:100%; border-bottom:1px solid rgba(255,255,255,0.1);">
-                                    <div class="led-label" style="color: #fbbf24;">HAUT. MAX AXE OPT. / POINT CHAUD</div>
-                                    <input type="number" id="outLimitOpticalH" class="led-input big-result text-orange" style="font-size: 1.8rem; margin:0; opacity:0.8;" value="0.00" readonly>
-                                </div>
+
                                 <div style="flex:1; display:flex; flex-direction:column; justify-content:center; width:100%;">
-                                    <div class="led-label" style="color: #34d399;">HAUT. AXE OPT. / POINT CHAUD</div>
+                                    <div class="led-label" style="color: #34d399;">HAUT.<br>AXE OPT. / POINT CHAUD (M)</div>
                                     <input type="number" id="outOpticalH" class="led-input big-result text-green" style="font-size: 1.8rem; margin:0;" value="0.00" readonly>
+                                    
+                                    <div style="display: flex; flex-direction: row; align-items: baseline; justify-content: center; gap: 8px; margin-top: -5px;">
+                                        <div class="led-label" style="color:rgba(52, 211, 153, 0.7); font-size: 0.6rem;">DISTANCE PIVOT (M)</div>
+                                        <input type="number" id="outReachOptCurrent" class="led-input text-green" style="font-size: 1.1rem; width: 60px; height: auto; padding:0; border:none; background:transparent; font-weight:bold;" value="0.00" readonly>
+                                    </div>
                                 </div>
+
                             </div>
                         </div>
                     </div>
@@ -639,6 +663,8 @@
         const visDiagR = document.getElementById('visDiagR');
 
         // Inputs & Results
+        const outReachOpt = document.getElementById('outReachOpt'); 
+        const outReachOptCurrent = document.getElementById('outReachOptCurrent'); // NOUVEAU
         const outTotal = document.getElementById('outTotal');
         const outRealTotal = document.getElementById('outRealTotal');
         const outLeverTotal = document.getElementById('outLeverTotal'); // NOUVEAU
@@ -886,13 +912,15 @@
             updateGueuseVisuals();
         }
 
-        // Fonction d'animation physique (Ressort "Lourd")
+        // Fonction d'animation physique (Ressort "Lourd" et TRÈS LENT)
         function animateSway() {
-            // Réglages ralentis (3x plus lent)
-            // Tension très basse pour simuler une masse importante
-            const tension = 0.015; 
-            // Friction plus élevée pour éviter que ça rebondisse trop longtemps
-            const friction = 0.92;
+            // Réglages ralentis (divisé par ~10 pour ralentir la fréquence d'env. 3-4x)
+            // Tension très basse pour simuler une masse énorme et un mouvement lent
+            const tension = 0.0015; // Était à 0.015
+            
+            // Friction plus faible (valeur plus proche de 1) pour conserver l'élan
+            // sinon avec si peu de tension, ça s'arrêterait avant de revenir
+            const friction = 0.96; // Était à 0.92
 
             // Calcul de la vitesse vers 0 (position d'équilibre)
             swayVelocity += (0 - currentRotation) * tension;
@@ -908,7 +936,8 @@
             calculate(null);
 
             // Seuil d'arrêt plus fin pour éviter le micro-tremblement à la fin
-            if (Math.abs(currentRotation) > 0.01 || Math.abs(swayVelocity) > 0.01) {
+            // On abaisse le seuil de vitesse car tout bouge plus lentement
+            if (Math.abs(currentRotation) > 0.01 || Math.abs(swayVelocity) > 0.001) {
                 swayAnimFrame = requestAnimationFrame(animateSway);
             } else {
                 // Arrêt propre
@@ -1198,10 +1227,12 @@
             if(outPressure) {
                 outPressure.value = pressure.toFixed(0);
                 
-                // On récupère le panneau gauche pour changer sa couleur
+                // On récupère le panneau gauche et le bouton SOL
                 const leftPanel = document.querySelector('.shnop-left-panel');
+                const btnSol = document.getElementById('btnNavSol'); // NOUVEAU
 
                 if (pressure > limitLoad) {
+                    // --- CAS DANGER ---
                     // Styles Texte
                     outPressure.style.color = "#f87171"; outPressure.style.textShadow = "0 0 10px rgba(248, 113, 113, 0.6)";
                     outSafeStatus.innerText = "DANGER"; outSafeStatus.style.color = "#f87171"; outSafeStatus.style.textShadow = "0 0 10px rgba(248, 113, 113, 0.6)";
@@ -1212,7 +1243,12 @@
                         leftPanel.style.backgroundColor = "rgba(239, 68, 68, 0.05)";
                         leftPanel.style.boxShadow = "inset 0 0 20px rgba(239, 68, 68, 0.05), 0 0 15px rgba(239, 68, 68, 0.1)";
                     }
+                    
+                    // Bouton SOL qui clignote
+                    if(btnSol) btnSol.classList.add('btn-danger-alert');
+
                 } else {
+                    // --- CAS OK ---
                     // Styles Texte
                     outPressure.style.color = "#34d399"; outPressure.style.textShadow = "0 0 10px rgba(52, 211, 153, 0.6)";
                     outSafeStatus.innerText = "OK"; outSafeStatus.style.color = "#34d399"; outSafeStatus.style.textShadow = "0 0 10px rgba(52, 211, 153, 0.6)";
@@ -1223,6 +1259,9 @@
                         leftPanel.style.backgroundColor = "rgba(52, 211, 153, 0.05)";
                         leftPanel.style.boxShadow = "inset 0 0 20px rgba(52, 211, 153, 0.05), 0 0 15px rgba(52, 211, 153, 0.1)";
                     }
+
+                    // On arrête le clignotement
+                    if(btnSol) btnSol.classList.remove('btn-danger-alert');
                 }
             }
 
@@ -1282,46 +1321,63 @@
 
                 // --- CALCUL DES LIMITES THEORIQUES (Fixes pour affichage) ---
                 const sin70 = Math.sin(70 * Math.PI / 180); // ~0.94
+                const cos70 = Math.cos(70 * Math.PI / 180); // ~0.34
                 
+                // Calcul de l'angle Max réel (limité par le sol ou 70°)
+                let realMaxAngleRad = 70 * Math.PI / 180;
+                
+                // Si le cul du bras touche le sol avant 70°
+                if (pivotHeightMeters < (dR * sin70)) {
+                     // L'angle est limité par la touche arrière
+                     realMaxAngleRad = Math.asin(Math.min(1, pivotHeightMeters / dR));
+                }
+
                 // A. Limite ARRIÈRE (Combien l'arrière peut monter ?)
-                // 1. Limité par Angle 70°
-                let maxR_70 = pivotHeightMeters + (dR * sin70);
-                // 2. Limité par le sol à l'avant (si l'avant touche le sol, l'arrière ne monte plus)
+                // Si l'avant touche le sol (angle inverse)
                 let maxR_Ground = 999;
-                // L'avant touche le sol si Pivot < Projection Verticale Max Avant
                 if (pivotHeightMeters < (dF * sin70)) { 
-                     // Ratio de levier : Si avant descend de X, arrière monte de Y
                      maxR_Ground = pivotHeightMeters + (dR * (pivotHeightMeters / dF));
                 }
+                let maxR_70 = pivotHeightMeters + (dR * sin70);
                 let finalLimitR = Math.min(maxR_70, maxR_Ground);
 
-                // B. Limite AVANT (Combien l'avant peut monter ?)
-                // 1. Limité par Angle 70°
-                let maxF_70 = pivotHeightMeters + (dF * sin70);
-                // 2. Limité par le sol à l'arrière
-                let maxF_Ground = 999;
-                if (pivotHeightMeters < (dR * sin70)) {
-                    maxF_Ground = pivotHeightMeters + (dF * (pivotHeightMeters / dR));
-                }
-                let finalLimitF = Math.min(maxF_70, maxF_Ground);
+                // B. Limite AVANT (Hauteur Max)
+                // On utilise l'angle calculé ci-dessus pour la hauteur
+                let finalLimitF = pivotHeightMeters + (dF * Math.sin(realMaxAngleRad));
 
-                // Mise à jour des résultats numériques (Tab 3)
+                // C. Calcul de la DISTANCE PIVOT (Projection Horizontale à Hauteur Max)
+                // Distance = Bras * cos(AngleMax)
+                let maxReach = dF * Math.cos(realMaxAngleRad);
+
+                // Mise à jour des résultats numériques
                 if(outMaxRearH) outMaxRearH.value = hR_val.toFixed(2);
                 if(outMaxFrontH) outMaxFrontH.value = hF_val.toFixed(2);
                 
                 if(outLimitRearH) outLimitRearH.value = finalLimitR.toFixed(2);
                 if(outLimitFrontH) outLimitFrontH.value = finalLimitF.toFixed(2);
 
-                // Calcul Hauteurs Axe Optique (Actuelle et Max)
+                // Calcul Hauteurs Axe Optique & Reach
                 if(outOpticalH) {
                     let offsetVal = parseFloat(inOffset.value) || 0;
                     
-                    // 1. Actuelle
+                    // 1. Hauteur Actuelle
                     outOpticalH.value = (hF_val + offsetVal).toFixed(2);
                     
-                    // 2. Limite Max (finalLimitF a été calculé juste au-dessus)
+                    // 2. Hauteur Limite Max
                     if(outLimitOpticalH) {
                         outLimitOpticalH.value = (finalLimitF + offsetVal).toFixed(2);
+                    }
+                    
+                    // 3. Distance Pivot (Horizontale) à Max Hauteur (Orange)
+                    if(outReachOpt) {
+                        outReachOpt.value = maxReach.toFixed(2);
+                    }
+
+                    // 4. Distance Pivot (Horizontale) Actuelle (Verte) [NOUVEAU]
+                    if(outReachOptCurrent) {
+                        // Distance = Longueur Bras * cos(Angle Actuel)
+                        let currentReach = dF * Math.cos(rad);
+                        outReachOptCurrent.value = currentReach.toFixed(2);
                     }
                 }
 
