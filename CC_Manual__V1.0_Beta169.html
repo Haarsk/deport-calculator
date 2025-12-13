@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manuel Technique - Calculateur de Déport V1.0</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --accent-cyan: #06b6d4;
+            --accent-orange: #fbbf24;
+            --accent-green: #34d399;
+            --accent-red: #f87171;
+            --border: #334155;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        h1, h2, h3 { color: var(--accent-cyan); border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        h1 { text-align: center; text-transform: uppercase; letter-spacing: 2px; border: none; font-size: 1.8rem; margin-bottom: 0; margin-top: 0;}
+        h2 { margin-top: 40px; color: var(--accent-orange); border-bottom: 2px solid var(--accent-orange); display: inline-block; padding-right: 20px;}
+        h3 { color: #fff; font-size: 1.1rem; border: none; margin-top: 25px; margin-bottom: 5px; opacity: 0.9; }
+
+        /* --- STYLES DES BOITES --- */
+        section {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+        }
+
+        .formula-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 4px solid var(--accent-green);
+            padding: 15px;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 15px 0;
+            color: var(--accent-green);
+            font-size: 1.1rem;
+            font-weight: bold;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .variable-list { list-style: none; padding: 0; }
+        .variable-list li { margin-bottom: 8px; padding-left: 15px; border-left: 2px solid rgba(255,255,255,0.1); }
+        .variable-list strong { color: #fff; }
+
+        .note-box {
+            background: rgba(251, 191, 36, 0.1);
+            border-left: 4px solid var(--accent-orange);
+            padding: 10px;
+            font-size: 0.9rem;
+            color: #fde68a;
+            margin-top: 10px;
+        }
+
+        /* --- SCHEMAS GRAPHIQUES (CSS PUR) --- */
+        .schematic-container {
+            width: 100%;
+            height: 220px;
+            background: #0f172a;
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            position: relative;
+            margin: 20px 0;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* Elements communs */
+        .s-pivot {
+            position: absolute; bottom: 40px; left: 30%;
+            width: 0; height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 30px solid var(--accent-cyan);
+            transform: translateX(-50%);
+            z-index: 5;
+        }
+        
+        .s-beam {
+            position: absolute; bottom: 70px; left: 5%; width: 90%; height: 6px;
+            background: #475569;
+            z-index: 2;
+        }
+
+        .s-ground {
+            position: absolute; bottom: 40px; left: 0; width: 100%; height: 2px;
+            background: #334155;
+        }
+        
+        /* Charges */
+        .s-load-cam {
+            position: absolute; right: 5%; top: -24px;
+            width: 24px; height: 24px; background: var(--accent-green);
+            border-radius: 50%; box-shadow: 0 0 10px var(--accent-green);
+        }
+        .s-load-arm {
+            position: absolute; width: 40px; height: 12px; background: var(--accent-cyan);
+            border-radius: 2px; opacity: 0.9; top: -6px;
+        }
+
+        /* Fleches et Labels */
+        .lbl { position: absolute; color: #fff; font-size: 0.75rem; font-family: monospace; text-transform: uppercase; font-weight: bold; text-shadow: 0 0 4px #000;}
+        .arrow-line { position: absolute; background: #fff; opacity: 0.4; }
+        
+        .force-arrow { position: absolute; width: 2px; background: #fff; }
+        .force-arrow::after {
+            content: ''; position: absolute; bottom: 0; left: -4px;
+            border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 8px solid #fff;
+        }
+
+        .dim-arrow { position: absolute; height: 1px; background: #94a3b8; }
+        .dim-arrow::before, .dim-arrow::after { content: ''; position: absolute; top: -3px; width: 1px; height: 7px; background: #94a3b8; }
+        .dim-arrow::before { left: 0; } .dim-arrow::after { right: 0; }
+
+        /* --- TABLEAUX UI --- */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--border); }
+        th { color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; background: rgba(0,0,0,0.2); }
+        
+        /* --- BADGES --- */
+        .btn-tag {
+            display: inline-block; padding: 2px 6px; border-radius: 4px;
+            font-size: 0.75rem; font-weight: bold; font-family: monospace; text-transform: uppercase;
+        }
+        .bt-orange { border: 1px solid var(--accent-orange); color: var(--accent-orange); }
+        .bt-fill-orange { background: var(--accent-orange); color: #000; }
+        .bt-green { border: 1px solid var(--accent-green); color: var(--accent-green); }
+        .bt-red { border: 1px solid var(--accent-red); color: var(--accent-red); }
+
+        footer { margin-top: 50px; text-align: center; font-size: 0.8rem; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 20px;}
+
+    </style>
+</head>
+<body>
+
+    <h1>Manuel Technique Intégral</h1>
+    <p style="text-align: center; color: var(--text-muted); margin-top:0;">Calculateur de déport V1.0 (Real Physics Engine)</p>
+
+    <section>
+        <h2>1. Principes Physiques & Formules</h2>
+        <p>Ce logiciel est basé sur la mécanique statique des corps rigides. Contrairement à une approche simplifiée, il prend en compte la répartition réelle de la masse du bras (tube).</p>
+
+        <h3>A. Le Calcul du Moment de Force (Torque)</h3>
+        <p>La force qui fait basculer la grue vers l'avant est composée de deux éléments distincts additionnés :</p>
+        
+        <div class="schematic-container">
+            <div class="s-ground"></div>
+            <div class="s-pivot" style="left: 20%;"></div>
+            <div class="s-beam" style="left: 10%; width: 85%;"></div>
+            
+            <div class="s-load-cam" style="right: 0;"></div> 
+            <div class="s-load-arm" style="left: 60%;"></div> 
+
+            <div class="lbl" style="bottom: 15px; left: 18%; color: var(--accent-cyan);">PIVOT</div>
+
+            <div class="dim-arrow" style="bottom: 25px; left: 20%; width: 75%;"></div>
+            <div class="lbl" style="bottom: 5px; left: 50%;">DISTANCE (D)</div>
+
+            <div class="dim-arrow" style="bottom: 50px; left: 20%; width: 42%; opacity: 0.5;"></div>
+            <div class="lbl" style="bottom: 52px; left: 35%; font-size: 0.65rem; opacity: 0.7;">D / 2</div>
+
+            <div class="force-arrow" style="height: 60px; right: 1%; top: 56px; background: var(--accent-green);"></div>
+            <div class="lbl" style="top: 20px; right: 1%; color: var(--accent-green); text-align: right;">
+                CHARGE UTILE<br><span style="font-size:0.65rem; opacity:0.8;">Levier : 100% de D</span>
+            </div>
+
+            <div class="force-arrow" style="height: 40px; left: 62%; top: 76px; background: var(--accent-cyan);"></div>
+            <div class="lbl" style="top: 35px; left: 58%; color: var(--accent-cyan);">
+                MASSE BRAS<br><span style="font-size:0.65rem; opacity:0.8;">Levier : 50% de D</span>
+            </div>
+        </div>
+
+        <p>Le moment avant ($M_{Avant}$) est calculé ainsi :</p>
+        <div class="formula-box">
+            M_Avant = (Charge_Bout × Dist_Avant) + (Poids_Bras × (Dist_Avant / 2))
+        </div>
+
+        <ul class="variable-list">
+            <li><strong>Charge Bout :</strong> Somme de (Caméra + Tête + Accessoires). Située à l'extrémité, son bras de levier est la distance totale.</li>
+            <li><strong>Poids Bras :</strong> Le bras étant un tube homogène, son centre de gravité est géométriquement situé en son milieu. Son poids propre n'exerce donc un levier que sur la <strong>moitié</strong> de la distance.</li>
+        </ul>
+
+        <h3>B. Le Calcul de l'Équilibre (Contrepoids)</h3>
+        <p>Pour obtenir l'équilibre statique, le moment arrière doit égaler le moment avant.</p>
+
+        <div class="schematic-container" style="height: 180px;">
+            <div class="s-ground"></div>
+            <div class="s-pivot" style="left: 50%;"></div>
+            <div class="s-beam" style="left: 10%; width: 80%;"></div>
+
+            <div class="force-arrow" style="height: 50px; left: 10%; top: 76px; background: var(--accent-red);"></div>
+            <div class="lbl" style="top: 40px; left: 5%; color: var(--accent-red);">POIDS REQUIS ?</div>
+
+            <div class="force-arrow" style="height: 50px; right: 10%; top: 76px; background: #fff; opacity: 0.5;"></div>
+            <div class="lbl" style="top: 40px; right: 5%; opacity: 0.5;">MOMENT AVANT</div>
+
+            <div class="dim-arrow" style="bottom: 50px; left: 10%; width: 40%;"></div>
+            <div class="lbl" style="bottom: 25px; left: 20%; color: var(--accent-red);">DIST. ARRIÈRE</div>
+
+            <div class="lbl" style="bottom: 10px; left: 50%; transform: translateX(-50%); font-size: 1.5rem;">=</div>
+        </div>
+
+        <div class="formula-box">
+            Poids_Requis = M_Avant / Dist_Arrière
+        </div>
+
+        <h3>C. Pression au Sol (Sécurité)</h3>
+        <p>Donnée critique pour la sécurité des planchers.</p>
+        
+        <div class="schematic-container" style="height: 140px;">
+            <div style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 140px; height: 10px; background: var(--accent-cyan); opacity: 0.3;"></div>
+            
+            <div class="force-arrow" style="height: 30px; left: 50%; bottom: 30px; background: var(--accent-orange);"></div>
+            <div class="force-arrow" style="height: 30px; left: 45%; bottom: 30px; background: var(--accent-orange);"></div>
+            <div class="force-arrow" style="height: 30px; left: 55%; bottom: 30px; background: var(--accent-orange);"></div>
+
+            <div class="lbl" style="top: 20px; width: 100%; text-align: center; color: var(--accent-orange);">
+                MASSE TOTALE (Tout compris)
+            </div>
+            <div class="lbl" style="bottom: 5px; width: 100%; text-align: center; color: var(--accent-cyan);">
+                SURFACE DE CALAGE (m²)
+            </div>
+        </div>
+
+        <div class="formula-box">
+            Pression (kg/m²) = Poids_Total / Surface_Calage
+        </div>
+        <div class="note-box">
+            <strong>Poids Total =</strong> Poids Requis (Gueuses) + Charge Utile + Poids Bras + Poids Base (Dolly/Pied).
+        </div>
+    </section>
+
+    <section>
+        <h2>2. Guide de l'Interface</h2>
+
+        <h3>La Visualisation Interactive</h3>
+        <p>La zone supérieure affiche une simulation de la grue en temps réel.</p>
+        <ul>
+            <li><strong>Drag & Drop :</strong> Vous pouvez déplacer les éléments (Carré Rouge / Rond Vert) directement avec le doigt pour changer les distances.</li>
+            <li><strong>Pivot :</strong> Déplacez le pivot central verticalement pour ajuster la hauteur de l'axe.</li>
+            <li><strong>Wobble :</strong> Touchez le bras pour vérifier son inertie et son comportement physique.</li>
+        </ul>
+
+        <h3>Le Panneau de Contrôle (Onglets)</h3>
+        
+        <h4>Onglet 1 : CONFIG</h4>
+        <p>Gère la géométrie de la machine.</p>
+        <ul>
+            <li><strong>Dist. Arrière / Avant :</strong> Longueur des tubes.</li>
+            <li><strong>Bouton LOCK <span class="btn-tag bt-fill-orange">LOCK</span> :</strong> 
+                <ul>
+                    <li><span class="bt-orange">OFF</span> : Les longueurs sont indépendantes.</li>
+                    <li><span class="bt-fill-orange">ON</span> : La <strong>Longueur Totale</strong> est verrouillée. Si vous allongez l'avant, l'arrière rentre automatiquement pour conserver la même longueur de tube.</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h4>Onglet 2 : SOL</h4>
+        <p>Gestion de la sécurité au sol.</p>
+        <ul>
+            <li><strong>Limite Sol :</strong> La résistance maximale de votre plancher (ex: 500kg/m²).</li>
+            <li><strong>Répartition :</strong> La surface de vos plaques de bois/calage.</li>
+            <li><strong>Visualisation :</strong> Un carré bleu montre la taille réelle de la plaque nécessaire.</li>
+            <li><strong style="color:var(--accent-red)">ALERTE DANGER :</strong> Si la pression calculée dépasse la limite, l'interface clignote en rouge.</li>
+        </ul>
+
+        <h4>Onglet 3 : HAUTEUR & OPTIQUE</h4>
+        <p>Données précises de positionnement.</p>
+        <ul>
+            <li><strong>Hauteur Pivot :</strong> Hauteur de l'axe machinerie.</li>
+            <li><strong>Décalage Optique :</strong> Permet d'ajouter/soustraire la hauteur de la tête (ex: tête pendulaire sous le bras = valeur négative).</li>
+            <li><strong>Résultats :</strong>
+                <ul>
+                    <li>Hauteur Max atteinte par le cul de la grue (Attention plafond).</li>
+                    <li>Hauteur Max atteinte par l'axe optique.</li>
+                    <li>Portée horizontale (Reach).</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h3>Le Panneau Latéral (Poids)</h3>
+        <p>Permet d'activer/désactiver les masses et de régler leur poids.</p>
+        <table>
+            <tr>
+                <th>Module</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><span class="bt-green">TÊTE</span></td>
+                <td>Poids tête remote / projo (Bout de flèche).</td>
+            </tr>
+            <tr>
+                <td><span class="bt-green">CAMÉRA</span></td>
+                <td>Poids caméra + optique (Bout de flèche).</td>
+            </tr>
+            <tr>
+                <td><span class="bt-green">BRAS</span></td>
+                <td>Poids du tube (Réparti à 50%).</td>
+            </tr>
+            <tr>
+                <td><span class="bt-orange">BASE</span></td>
+                <td>Poids du pied/dolly (Pour calcul pression sol).</td>
+            </tr>
+            <tr>
+                <td><span class="bt-red">GUEUSE</span></td>
+                <td>Poids unitaire pour le calcul du nombre de pains.</td>
+            </tr>
+        </table>
+    </section>
+
+    <footer>
+        <p>Document généré pour Calculateur de déport V1.0 Beta 169.<br>
+        <strong>Avertissement :</strong> Ce logiciel est une aide au calcul. La responsabilité finale de la mise en œuvre et de la sécurité incombe au chef machiniste.</p>
+    </footer>
+
+</body>
+</html>
